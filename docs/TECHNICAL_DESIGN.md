@@ -761,7 +761,7 @@ These map to PRODUCT.md §10.
 | M1 | Auth | Register/login/refresh/logout, roles, admin bootstrap, provider invites, password reset (emails via outbox stub) |
 | M2 | Catalog and availability | Services CRUD, provider services, availability rules, time off, provider directory |
 | M3 | Slots | SlotService + DST tests, slots endpoint, SlotPicker UI |
-| M4 | Bookings | Create/cancel, all conflict checks, exclusion constraints, concurrency tests, My bookings, provider calendar |
+| M4 | Bookings | Create/cancel, all conflict checks, `23P01` → error-code mapping for the exclusion constraints (created in V1 at M0), concurrency tests, My bookings, provider calendar |
 | M5 | Email | Outbox dispatcher, templates, Mailpit, GreenMail tests → **MVP complete** |
 | M6 | v1.1 | Reschedule, reminders, `.ics`, admin settings UI, failed-email dashboard, completed/no-show |
 
