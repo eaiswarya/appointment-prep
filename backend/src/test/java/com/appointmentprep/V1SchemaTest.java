@@ -58,11 +58,12 @@ class V1SchemaTest {
   void createsEveryTable() {
     List<String> tables =
         jdbc.queryForList(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
+            "SELECT table_name FROM information_schema.tables"
+                + " WHERE table_schema = 'public' AND table_name <> 'flyway_schema_history'",
             String.class);
 
     assertThat(tables)
-        .contains(
+        .containsExactlyInAnyOrder(
             "users",
             "providers",
             "services",
@@ -130,6 +131,25 @@ class V1SchemaTest {
     assertThat(error.getSQLState()).isEqualTo("23P01");
     assertThat(error.getServerErrorMessage().getConstraint())
         .isEqualTo("bookings_no_customer_overlap");
+  }
+
+  @Test
+  void customerCanBookDuringPreviousProvidersBuffer() {
+    // The buffer protects the provider only; the customer is free from 10:00.
+    booking(customerA, providerP, T09_30, T10_00, T10_15, "CONFIRMED");
+
+    booking(customerA, providerQ, T10_00, T10_30, T10_30, "CONFIRMED");
+
+    assertThat(confirmedBookingsFor(providerQ)).isEqualTo(1);
+  }
+
+  @Test
+  void cancelledBookingDoesNotBlockCustomer() {
+    booking(customerA, providerP, T10_00, T10_30, T10_30, "CANCELLED");
+
+    booking(customerA, providerQ, T10_00, T10_30, T10_30, "CONFIRMED");
+
+    assertThat(confirmedBookingsFor(providerQ)).isEqualTo(1);
   }
 
   @Test

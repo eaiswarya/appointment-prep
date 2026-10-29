@@ -50,6 +50,7 @@ CREATE TABLE provider_services (
   CONSTRAINT provider_services_provider_fk FOREIGN KEY (provider_id) REFERENCES providers (id),
   CONSTRAINT provider_services_service_fk FOREIGN KEY (service_id) REFERENCES services (id)
 );
+CREATE INDEX provider_services_service_idx ON provider_services (service_id);
 
 CREATE TABLE availability_rules (
   id           uuid PRIMARY KEY,
@@ -160,6 +161,8 @@ CREATE TABLE refresh_tokens (
   CONSTRAINT refresh_tokens_replaced_by_fk FOREIGN KEY (replaced_by) REFERENCES refresh_tokens (id),
   CONSTRAINT refresh_tokens_hash_unique UNIQUE (token_hash)
 );
+-- Reuse detection revokes all of a user's tokens (§8.1).
+CREATE INDEX refresh_tokens_user_idx ON refresh_tokens (user_id);
 
 -- Invites and password resets.
 CREATE TABLE user_tokens (
