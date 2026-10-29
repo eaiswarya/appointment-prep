@@ -1,3 +1,8 @@
+server:
+  servlet:
+    # The API base path (TECHNICAL_DESIGN §9). Actuator and the API docs live under it too.
+    context-path: /api
+
 spring:
   application:
     name: appointment
@@ -12,3 +17,15 @@ management:
     web:
       exposure:
         include: health,info
+
+# API docs are dev-only; see application-dev.yml.
+springdoc:
+  api-docs:
+    enabled: false
+    path: /docs/openapi.json
+  swagger-ui:
+    enabled: false
+    path: /docs
+  # Stable key order so the exported spec and the generated client don't churn.
+  writer-with-order-by-keys: true
+  writer-with-default-pretty-printer: true

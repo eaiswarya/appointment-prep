@@ -19,6 +19,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-jdbc")
   implementation("org.flywaydb:flyway-core")
   implementation("org.flywaydb:flyway-database-postgresql")
+  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17")
   runtimeOnly("org.postgresql:postgresql")
   testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("org.postgresql:postgresql")
@@ -39,3 +40,13 @@ spotless {
 }
 
 tasks.withType<Test> { useJUnitPlatform() }
+
+// Writes build/openapi/openapi.json for `npm run generate:api` (frontend).
+tasks.register<Test>("exportOpenApi") {
+  description = "Exports the OpenAPI spec to build/openapi/openapi.json."
+  group = "documentation"
+  testClassesDirs = sourceSets.test.get().output.classesDirs
+  classpath = sourceSets.test.get().runtimeClasspath
+  filter { includeTestsMatching("com.appointmentprep.config.OpenApiSpecTest") }
+  outputs.upToDateWhen { false }
+}
