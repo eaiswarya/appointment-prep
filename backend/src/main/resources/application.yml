@@ -1,6 +1,11 @@
 spring:
   application:
     name: appointment
+  datasource:
+    # Docker Compose overrides the URL with SPRING_DATASOURCE_URL. Credentials come from env vars only.
+    url: jdbc:postgresql://localhost:5432/appointments
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
 
 management:
   endpoints:
