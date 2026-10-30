@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest",
-    "generate:api": "openapi-typescript ../backend/build/openapi/openapi.json -o src/api/schema.d.ts"
+    "generate:api": "openapi-typescript ../backend/target/openapi/openapi.json -o src/api/schema.d.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.105.0",
