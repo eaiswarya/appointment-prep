@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,11 +15,14 @@ import org.springframework.http.ResponseEntity;
 @Import(TestcontainersConfiguration.class)
 class HealthEndpointTest {
 
+  @LocalServerPort private int port;
+
   @Autowired private TestRestTemplate rest;
 
   @Test
-  void healthReportsUp() {
-    ResponseEntity<String> response = rest.getForEntity("/actuator/health", String.class);
+  void healthReportsUpUnderApiBasePath() {
+    ResponseEntity<String> response =
+        rest.getForEntity("http://localhost:" + port + "/api/actuator/health", String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isEqualTo("{\"status\":\"UP\"}");

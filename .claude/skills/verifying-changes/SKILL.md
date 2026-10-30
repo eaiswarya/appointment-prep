@@ -17,7 +17,7 @@ If a command below doesn't exist yet (the repo is before or during milestone M0)
 |---|---|
 | `backend/**` | `cd backend && ./gradlew check` (unit + Testcontainers integration + Spotless) |
 | `frontend/**` | `cd frontend && npm run lint && npm run typecheck && npm test -- --run && npm run build` |
-| API contract (controllers/DTOs) | Both of the above, plus: with the backend running, `cd frontend && npm run generate:api`. The regenerated `src/api/schema.d.ts` must be committed (`git status` clean for that file) |
+| API contract (controllers/DTOs) | Both of the above, plus: `cd backend && ./gradlew exportOpenApi`, then `cd frontend && npm run generate:api`. The regenerated `src/api/schema.d.ts` must be committed (`git status` clean for that file) |
 | `docker-compose*.yml`, Dockerfiles, `nginx.conf` | `docker compose build && docker compose up -d && docker compose ps` (all services healthy), then smoke test |
 | User-facing flow | E2E: `cd e2e && npx playwright test` with the stack running |
 | Docs only | Check that links and section references (§n, FR-n) still resolve |

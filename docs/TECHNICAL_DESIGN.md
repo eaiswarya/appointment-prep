@@ -507,7 +507,7 @@ Templates format times in the **recipient's** timezone (`users.timezone`, or `pr
 
 ## 9. REST API
 
-Base path `/api`. JSON in UTC ISO-8601. List endpoints are paginated (`?page=&size=`, max 100) and return `{ items, page, size, total }`. Full contract: springdoc at `/api/docs` (dev only).
+Base path `/api`, set as the servlet context path, so Actuator (`/api/actuator/health`) and the docs live under it too. JSON in UTC ISO-8601. List endpoints are paginated (`?page=&size=`, max 100) and return `{ items, page, size, total }`. Full contract: springdoc at `/api/docs`, with the spec at `/api/docs/openapi.json` (dev profile only).
 
 ### 9.1 Endpoints
 
@@ -676,7 +676,7 @@ appointment-prep/
   1. A `gradle:jdk21` stage builds the jar.
   2. A Spring Boot layered-jar extract makes the Docker layers.
   3. The runtime stage is `eclipse-temurin:21-jre-alpine`, running as a non-root user with `-XX:MaxRAMPercentage=75`.
-  4. The healthcheck calls `/actuator/health`.
+  4. The healthcheck calls `/api/actuator/health`.
 - **frontend.** A `node:22-alpine` stage runs `npm ci && npm run build`. The runtime stage is `nginx:alpine`, serving `dist/` with SPA fallback (`try_files … /index.html`) and `location /api/ { proxy_pass http://backend:8080; }`.
 
 ### 12.2 `docker-compose.yml` (outline)

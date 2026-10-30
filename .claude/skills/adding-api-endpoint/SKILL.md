@@ -48,8 +48,8 @@ Missing any one causes drift. TECHNICAL_DESIGN §9 is the contract.
    | Each domain error the endpoint can raise | Its status + `code` |
 
 8. **Frontend client.**
-   1. Start the backend (`docker compose up -d backend`, or `./gradlew bootRun` with the `dev` profile).
-   2. Run `cd frontend && npm run generate:api`. It reads `http://localhost:8080/api/docs/openapi.json`.
+   1. Make sure Docker is running (the export uses Testcontainers).
+   2. Regenerate the client: `cd backend && ./gradlew exportOpenApi` (boots the app on Testcontainers and writes `build/openapi/openapi.json`; no running server needed), then `cd ../frontend && npm run generate:api`.
    3. Commit `src/api/schema.d.ts`. CI regenerates the file and fails if it differs.
    4. Use the generated types.
    5. Add a TanStack Query hook in the feature folder, and invalidate the related query keys after mutations.
