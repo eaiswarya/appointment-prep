@@ -49,7 +49,7 @@ Missing any one causes drift. TECHNICAL_DESIGN §9 is the contract.
 
 8. **Frontend client.**
    1. Make sure Docker is running (the export uses Testcontainers).
-   2. Regenerate the client: `cd backend && ./gradlew exportOpenApi` (boots the app on Testcontainers and writes `build/openapi/openapi.json`; no running server needed), then `cd ../frontend && npm run generate:api`.
+   2. Regenerate the client: `cd backend && ./mvnw test -Dtest=OpenApiSpecTest` (boots the app on Testcontainers and writes `target/openapi/openapi.json`; no running server needed), then `cd ../frontend && npm run generate:api`.
    3. Commit `src/api/schema.d.ts`. CI regenerates the file and fails if it differs.
    4. Use the generated types.
    5. Add a TanStack Query hook in the feature folder, and invalidate the related query keys after mutations.
