@@ -35,7 +35,10 @@ npm test -- --run src/features/booking
 cp .env.example .env              # first time only
 docker compose up --build -d
 docker compose logs -f backend    # watch startup / Flyway
+docker compose down               # stop (keeps the DB volume)
 ```
+
+`docker compose up` also loads `docker-compose.override.yml`: the `dev` profile (Swagger UI) and Mailpit. For a production-like run without them, use `docker compose -f docker-compose.yml up --build -d`. Postgres isn't published to the host; use `docker compose exec db psql -U "$POSTGRES_USER" -d appointments`.
 
 | URL | What |
 |---|---|
