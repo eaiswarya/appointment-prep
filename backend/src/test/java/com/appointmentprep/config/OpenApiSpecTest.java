@@ -18,15 +18,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
- * Serves the OpenAPI spec (dev profile) and exports it to {@code build/openapi/openapi.json}, the
- * input for {@code npm run generate:api}. Run {@code ./gradlew exportOpenApi} to refresh it.
+ * Serves the OpenAPI spec (dev profile) and exports it to {@code target/openapi/openapi.json}, the
+ * input for {@code npm run generate:api}. Refresh it with {@code ./mvnw test
+ * -Dtest=OpenApiSpecTest}.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("dev")
 class OpenApiSpecTest {
 
-  static final Path EXPORT = Path.of("build", "openapi", "openapi.json");
+  static final Path EXPORT = Path.of("target", "openapi", "openapi.json");
 
   @LocalServerPort private int port;
 

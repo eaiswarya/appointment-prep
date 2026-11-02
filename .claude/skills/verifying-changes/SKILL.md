@@ -15,9 +15,9 @@ If a command below doesn't exist yet (the repo is before or during milestone M0)
 
 | You touched | Run |
 |---|---|
-| `backend/**` | `cd backend && ./gradlew check` (unit + Testcontainers integration + Spotless) |
+| `backend/**` | `cd backend && ./mvnw verify` (unit + Testcontainers integration + Spotless) |
 | `frontend/**` | `cd frontend && npm run lint && npm run typecheck && npm test -- --run && npm run build` |
-| API contract (controllers/DTOs) | Both of the above, plus: `cd backend && ./gradlew exportOpenApi`, then `cd frontend && npm run generate:api`. The regenerated `src/api/schema.d.ts` must be committed (`git status` clean for that file) |
+| API contract (controllers/DTOs) | Both of the above, plus: `cd backend && ./mvnw test -Dtest=OpenApiSpecTest`, then `cd frontend && npm run generate:api`. The regenerated `src/api/schema.d.ts` must be committed (`git status` clean for that file) |
 | `docker-compose*.yml`, Dockerfiles, `nginx.conf` | `docker compose build && docker compose up -d && docker compose ps` (all services healthy), then smoke test |
 | User-facing flow | E2E: `cd e2e && npx playwright test` with the stack running |
 | Docs only | Check that links and section references (§n, FR-n) still resolve |
@@ -25,7 +25,7 @@ If a command below doesn't exist yet (the repo is before or during milestone M0)
 Targeted runs while iterating (always finish with the full run for that layer):
 
 ```bash
-./gradlew test --tests "*BookingServiceTest"
+./mvnw test -Dtest="*BookingServiceTest"
 npm test -- --run src/features/booking
 ```
 
@@ -54,14 +54,14 @@ Dev seed data (admin, 3 providers, services, availability) loads with the `dev` 
 
 ## Environment gotchas (Windows)
 
-- Run `./gradlew` from Git Bash, or `.\gradlew.bat` from PowerShell.
+- Run `./mvnw` from Git Bash, or `.\mvnw.cmd` from PowerShell.
 - Testcontainers needs Docker Desktop running. A "Could not find a valid Docker environment" error means Docker isn't running; it is not a test failure. Report it as such.
-- Line-ending warnings (LF→CRLF) are harmless. Spotless failures are not: run `./gradlew spotlessApply`.
+- Line-ending warnings (LF→CRLF) are harmless. Spotless failures are not: run `./mvnw spotless:apply`.
 
 ## Report format
 
 ```
-./gradlew check            → ✅ BUILD SUCCESSFUL (212 tests)
+./mvnw verify              → ✅ BUILD SUCCESS (212 tests)
 npm run typecheck          → ❌ 2 errors (src/features/booking/Review.tsx:41 …)
 docker compose (not run)   → no infra changes
 ```

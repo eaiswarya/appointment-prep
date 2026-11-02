@@ -20,7 +20,7 @@ Closes #<!-- issue number; or replace this line with "No ticket: <reason>" -->
 
 ## How was this tested?
 
-- [ ] Backend: `./gradlew check`
+- [ ] Backend: `./mvnw verify`
 - [ ] Frontend: `npm run lint && npm run typecheck && npm test -- --run && npm run build`
 - [ ] API contract: `npm run generate:api` run, and `schema.d.ts` committed <!-- or N/A -->
 - [ ] Docker: `docker compose up --build` and all services are healthy <!-- infra changes, or N/A -->

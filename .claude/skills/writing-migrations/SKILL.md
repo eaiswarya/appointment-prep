@@ -45,6 +45,6 @@ The schema lives only in `backend/src/main/resources/db/migration`, and migratio
 
 ## Verification
 
-- Add or extend a Testcontainers test that runs all migrations on a clean DB. `./gradlew check` does this, because the app context starts with `validate`.
+- Add or extend a Testcontainers test that runs all migrations on a clean DB. `./mvnw verify` does this, because the app context starts with `validate`.
 - For constraints, write a test that **violates** the constraint and asserts the error, not just a happy-path insert.
 - Changed a table the API exposes? Use the `adding-api-endpoint` skill for the DTO and client changes.

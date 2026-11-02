@@ -660,7 +660,7 @@ Coverage targets: ≥ 80% lines on `slot`, `booking`, `notification`. Coverage e
 
 ```
 appointment-prep/
-├── backend/        # Spring Boot (Gradle Kotlin DSL), Dockerfile
+├── backend/        # Spring Boot (Maven, with wrapper), Dockerfile
 ├── frontend/       # React + Vite, Dockerfile, nginx.conf
 ├── e2e/            # Playwright tests
 ├── docs/           # PRODUCT.md, TECHNICAL_DESIGN.md, adr/
@@ -673,7 +673,7 @@ appointment-prep/
 ### 12.1 Images
 
 - **backend.** Multi-stage build.
-  1. A `gradle:jdk21` stage builds the jar.
+  1. A `maven:3-eclipse-temurin-21` stage builds the jar.
   2. A Spring Boot layered-jar extract makes the Docker layers.
   3. The runtime stage is `eclipse-temurin:21-jre-alpine`, running as a non-root user with `-XX:MaxRAMPercentage=75`.
   4. The healthcheck calls `/api/actuator/health`.
@@ -743,7 +743,7 @@ volumes: { pgdata: {} }
 
 Triggered on every PR to `main`:
 
-1. **Backend.** `./gradlew check`: unit and Testcontainers integration tests, plus Spotless formatting.
+1. **Backend.** `./mvnw verify`: unit and Testcontainers integration tests, plus Spotless formatting.
 2. **Frontend.** `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 3. **Contract.** Regenerate the OpenAPI client from the backend spec. The build fails if the committed `schema.d.ts` differs.
 4. **E2E** (on PRs labelled `e2e`, and nightly). `docker compose up -d --build`, then Playwright.
@@ -757,7 +757,7 @@ These map to PRODUCT.md §10.
 
 | # | Milestone | Contents |
 |---|---|---|
-| M0 | Skeleton | Monorepo, Gradle + Vite projects, Docker Compose, CI, Flyway V1, health endpoint, OpenAPI pipeline |
+| M0 | Skeleton | Monorepo, Maven + Vite projects, Docker Compose, CI, Flyway V1, health endpoint, OpenAPI pipeline |
 | M1 | Auth | Register/login/refresh/logout, roles, admin bootstrap, provider invites, password reset (emails via outbox stub) |
 | M2 | Catalog and availability | Services CRUD, provider services, availability rules, time off, provider directory |
 | M3 | Slots | SlotService + DST tests, slots endpoint, SlotPicker UI |
