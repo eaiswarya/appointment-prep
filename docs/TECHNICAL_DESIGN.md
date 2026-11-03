@@ -673,7 +673,7 @@ appointment-prep/
 ### 12.1 Images
 
 - **backend.** Multi-stage build.
-  1. A `maven:3-eclipse-temurin-21` stage builds the jar.
+  1. A `maven:3.10.0-eclipse-temurin-21` stage (pinned to the wrapper's Maven version) builds the jar.
   2. A Spring Boot layered-jar extract makes the Docker layers.
   3. The runtime stage is `eclipse-temurin:21-jre-alpine`, running as a non-root user with `-XX:MaxRAMPercentage=75`.
   4. The healthcheck calls `/api/actuator/health`.

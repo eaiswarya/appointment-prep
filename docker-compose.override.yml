@@ -1,0 +1,13 @@
+# Dev extras, loaded automatically by `docker compose up`.
+# For a production-like run without them: docker compose -f docker-compose.yml up
+services:
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_MAIL_HOST: mail
+      SPRING_MAIL_PORT: 1025
+
+  mail:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025" # web UI to inspect emails
