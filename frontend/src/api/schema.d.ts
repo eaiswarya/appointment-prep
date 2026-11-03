@@ -15,6 +15,3 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;
-
-// CI probe: hand edit that the contract job must catch.
-export type CiProbe = 1;
