@@ -41,7 +41,8 @@ public class IdGenerator {
       lastMillis++;
       counter = 0;
     }
-    long msb = (lastMillis << 16) | (0x7L << 12) | counter;
+    // Mask to 48 bits so an out-of-range clock can't overwrite the version nibble.
+    long msb = ((lastMillis & 0xFFFF_FFFF_FFFFL) << 16) | (0x7L << 12) | counter;
     long lsb = (random.nextLong() & 0x3FFF_FFFF_FFFF_FFFFL) | 0x8000_0000_0000_0000L;
     return new UUID(msb, lsb);
   }

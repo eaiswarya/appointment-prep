@@ -3,6 +3,7 @@ package com.appointmentprep.common;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -42,10 +43,45 @@ class ErrorHandlingTest {
   }
 
   @Test
-  void malformedJsonIsAValidationError() throws Exception {
+  void malformedJsonIsAValidationErrorWithAnEmptyErrorsList() throws Exception {
     mvc.perform(post("/probe/validate").contentType(MediaType.APPLICATION_JSON).content("{nope"))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.errors").isArray())
+        .andExpect(jsonPath("$.errors").isEmpty());
+  }
+
+  @Test
+  void constrainedRequestParamListsTheParameter() throws Exception {
+    // Spring's built-in method validation (HandlerMethodValidationException), e.g. page size <=
+    // 100.
+    mvc.perform(get("/probe/page").param("size", "500"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.errors[0].field").value("size"))
+        .andExpect(jsonPath("$.errors[0].message", notNullValue()));
+  }
+
+  @Test
+  void wrongTypeInBodyNamesTheField() throws Exception {
+    mvc.perform(
+            post("/probe/typed")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"startAt\": \"tomorrow\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.errors[0].field").value("startAt"));
+  }
+
+  @Test
+  void constraintViolationInAServiceIsAValidationError() throws Exception {
+    mvc.perform(
+            post("/probe/service-validate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"\", \"code\": \"ok\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.errors[0].field").value("name"));
   }
 
   @Test
@@ -102,7 +138,7 @@ class ErrorHandlingTest {
   void requestIdIsGeneratedWhenMissing() throws Exception {
     MvcResult result =
         mvc.perform(get("/probe/not-found"))
-            .andExpect(header().string("X-Request-Id", not("")))
+            .andExpect(header().string("X-Request-Id", not(emptyOrNullString())))
             .andReturn();
 
     String generated = result.getResponse().getHeader("X-Request-Id");
