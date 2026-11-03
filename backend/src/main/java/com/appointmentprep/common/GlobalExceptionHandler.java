@@ -84,7 +84,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @Override
   protected ResponseEntity<Object> handleExceptionInternal(
       Exception ex, Object body, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-    if (body instanceof ProblemDetail problem) {
+    // Spring's own handlers pass a null body; super builds the ProblemDetail, so enrich afterwards.
+    ResponseEntity<Object> response =
+        super.handleExceptionInternal(ex, body, headers, status, request);
+    if (response != null && response.getBody() instanceof ProblemDetail problem) {
       if (problem.getProperties() == null || !problem.getProperties().containsKey("code")) {
         defaultCodeFor(status).ifPresent(code -> withCode(problem, code));
       }
@@ -97,7 +100,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
       }
       problem.setProperty("requestId", MDC.get(RequestIdFilter.MDC_KEY));
     }
-    return super.handleExceptionInternal(ex, body, headers, status, request);
+    return response;
   }
 
   private static void withCode(ProblemDetail problem, ErrorCode code) {

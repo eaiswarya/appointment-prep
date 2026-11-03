@@ -75,6 +75,23 @@ class ErrorHandlingTest {
   }
 
   @Test
+  void unknownRouteIsANotFoundProblemWithRequestId() throws Exception {
+    mvc.perform(get("/no-such-route").header("X-Request-Id", "r-404"))
+        .andExpect(status().isNotFound())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+        .andExpect(jsonPath("$.requestId").value("r-404"));
+  }
+
+  @Test
+  void unsupportedMethodIsAProblemWithRequestId() throws Exception {
+    mvc.perform(get("/probe/validate").header("X-Request-Id", "r-405"))
+        .andExpect(status().isMethodNotAllowed())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.requestId").value("r-405"));
+  }
+
+  @Test
   void requestIdIsEchoedInHeaderAndBody() throws Exception {
     mvc.perform(get("/probe/not-found").header("X-Request-Id", "abc"))
         .andExpect(header().string("X-Request-Id", "abc"))
