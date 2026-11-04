@@ -1,14 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 import { z } from 'zod'
-import { api } from '../../api/client'
-import type { components } from '../../api/schema'
-import { ApiError, errorMessage } from '../../lib/errors'
+import { ApiError, errorMessage, type ApiProblem } from '../../lib/errors'
 import { FormField } from './FormField'
-
-type RegisterRequest = components['schemas']['RegisterRequest']
+import { useRegister } from './useRegister'
 
 // Quick client-side checks; the server applies the full rules (e.g. common passwords).
 const schema = z.object({
@@ -18,12 +14,21 @@ const schema = z.object({
 })
 
 type FormValues = z.infer<typeof schema>
+type FormFieldName = keyof FormValues
 
-const FIELDS = ['fullName', 'email', 'password'] as const
+const FORM_FIELDS: readonly string[] = ['fullName', 'email', 'password'] satisfies FormFieldName[]
+
+// Server fields with no input on this form; their errors go in the page alert instead.
+const OTHER_FIELD_LABELS: Record<string, string> = { timezone: 'Time zone' }
+
+function capitalize(text: string) {
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
 
 export function RegisterPage() {
   const navigate = useNavigate()
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const signUp = useRegister()
   const {
     register,
     handleSubmit,
@@ -31,49 +36,42 @@ export function RegisterPage() {
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
-  const signUp = useMutation({
-    mutationFn: async (body: RegisterRequest) => {
-      const { data, error, response } = await api.POST('/auth/register', { body })
-      if (error !== undefined || !response.ok) {
-        throw new ApiError(response.status, error)
-      }
-      return data
-    },
-    onSuccess: (user) => {
-      navigate('/login', { state: { registered: true, email: user.email } })
-    },
-    onError: (error) => {
-      const problem = error instanceof ApiError ? error.problem : {}
-      if (problem.code === 'EMAIL_TAKEN') {
-        setError('email', { message: errorMessage('EMAIL_TAKEN') }, { shouldFocus: true })
-        return
-      }
-      const fieldErrors = (problem.errors ?? []).filter((e) =>
-        (FIELDS as readonly string[]).includes(e.field),
-      )
-      if (fieldErrors.length > 0) {
-        fieldErrors.forEach((e, i) =>
-          setError(
-            e.field as (typeof FIELDS)[number],
-            { message: `${e.message.charAt(0).toUpperCase()}${e.message.slice(1)}` },
-            { shouldFocus: i === 0 },
-          ),
-        )
-        return
-      }
+  function showProblem(problem: ApiProblem) {
+    if (problem.code === 'EMAIL_TAKEN') {
+      setError('email', { message: errorMessage('EMAIL_TAKEN') }, { shouldFocus: true })
+      return
+    }
+    const fieldErrors = problem.errors ?? []
+    const onForm = fieldErrors.filter((e) => FORM_FIELDS.includes(e.field))
+    const elsewhere = fieldErrors.filter((e) => !FORM_FIELDS.includes(e.field))
+
+    onForm.forEach((e, i) =>
+      setError(e.field as FormFieldName, { message: capitalize(e.message) }, { shouldFocus: i === 0 }),
+    )
+    if (elsewhere.length > 0) {
+      setError('root', {
+        message: elsewhere.map((e) => `${OTHER_FIELD_LABELS[e.field] ?? e.field} ${e.message}.`).join(' '),
+      })
+    } else if (onForm.length === 0) {
       setError('root', { message: errorMessage(problem.code) })
-    },
-  })
+    }
+  }
+
+  function onSubmit(values: FormValues) {
+    signUp.mutate(
+      { ...values, timezone },
+      {
+        onSuccess: (user) => navigate('/login', { state: { registered: true, email: user.email } }),
+        onError: (error) => showProblem(error instanceof ApiError ? error.problem : {}),
+      },
+    )
+  }
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-12">
       <h1 className="text-2xl font-semibold">Create your account</h1>
 
-      <form
-        noValidate
-        className="mt-6 space-y-4"
-        onSubmit={handleSubmit((values) => signUp.mutate({ ...values, timezone }))}
-      >
+      <form noValidate className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
         {errors.root && (
           <p role="alert" className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
             {errors.root.message}

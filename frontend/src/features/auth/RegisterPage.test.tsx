@@ -2,11 +2,20 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
+import type { components } from '../../api/schema'
 import { ERROR_MESSAGES, FALLBACK_MESSAGE } from '../../lib/errors'
 import { server } from '../../test/msw'
 import { renderRoute } from '../../test/render'
 
 const REGISTER = '*/api/auth/register'
+
+const created: components['schemas']['UserDto'] = {
+  id: '0190b7a0-0000-7000-8000-000000000001',
+  email: 'asha@example.com',
+  fullName: 'Asha Rao',
+  role: 'CUSTOMER',
+  timezone: 'Asia/Kolkata',
+}
 
 function problem(status: number, body: Record<string, unknown>) {
   return HttpResponse.json(
@@ -29,10 +38,7 @@ describe('RegisterPage', () => {
     server.use(
       http.post(REGISTER, async ({ request }) => {
         sent = (await request.json()) as Record<string, unknown>
-        return HttpResponse.json(
-          { id: 'u1', email: 'asha@example.com', fullName: 'Asha Rao', role: 'CUSTOMER', timezone: 'UTC' },
-          { status: 201 },
-        )
+        return HttpResponse.json(created, { status: 201 })
       }),
     )
     const { router } = renderRoute('/register')
@@ -47,6 +53,7 @@ describe('RegisterPage', () => {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     })
     expect(await screen.findByRole('status')).toHaveTextContent(/you can log in now/i)
+    expect(screen.getByRole('heading', { name: /log in/i })).toHaveFocus()
   })
 
   it('shows each server field error next to its input', async () => {
@@ -76,6 +83,22 @@ describe('RegisterPage', () => {
     const email = screen.getByLabelText(/email/i)
     await waitFor(() => expect(email).toHaveAttribute('aria-invalid', 'true'))
     expect(email).toHaveAccessibleDescription(ERROR_MESSAGES.EMAIL_TAKEN)
+  })
+
+  it('shows a server error for the detected time zone in the page alert', async () => {
+    server.use(
+      http.post(REGISTER, () =>
+        problem(400, {
+          code: 'VALIDATION_ERROR',
+          errors: [{ field: 'timezone', message: 'must be a valid IANA time zone, e.g. Europe/London' }],
+        }),
+      ),
+    )
+    renderRoute('/register')
+
+    await fillAndSubmit()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/time zone must be a valid IANA time zone/i)
   })
 
   it('shows the fallback message for an unexpected server error', async () => {
