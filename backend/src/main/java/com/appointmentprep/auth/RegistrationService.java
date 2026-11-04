@@ -7,6 +7,7 @@ import com.appointmentprep.user.User;
 import com.appointmentprep.user.UserDto;
 import com.appointmentprep.user.UserRepository;
 import java.time.Clock;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -33,7 +34,7 @@ public class RegistrationService {
   public UserDto register(RegisterRequest request) {
     String email = request.email().trim();
     // Friendly pre-check; the case-insensitive unique constraint on users.email is the real guard.
-    if (users.existsByEmailIgnoreCase(email)) {
+    if (users.emailExists(email)) {
       throw emailTaken();
     }
     User user =
@@ -47,9 +48,25 @@ public class RegistrationService {
     try {
       users.saveAndFlush(user);
     } catch (DataIntegrityViolationException e) {
-      throw emailTaken();
+      // Only the email unique constraint means "taken"; anything else is a real error.
+      if (violates(e, EMAIL_UNIQUE)) {
+        throw emailTaken();
+      }
+      throw e;
     }
     return UserDto.from(user);
+  }
+
+  private static final String EMAIL_UNIQUE = "users_email_unique";
+
+  private static boolean violates(Throwable error, String constraint) {
+    for (Throwable t = error; t != null; t = t.getCause()) {
+      if (t instanceof ConstraintViolationException violation
+          && constraint.equals(violation.getConstraintName())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static DomainException emailTaken() {

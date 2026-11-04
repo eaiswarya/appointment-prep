@@ -2,11 +2,14 @@ package com.appointmentprep.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.appointmentprep.TestcontainersConfiguration;
+import com.appointmentprep.user.UserRepository;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -28,6 +32,8 @@ class RegistrationTest {
   @Autowired private MockMvc mvc;
 
   @Autowired private JdbcTemplate jdbc;
+
+  @MockitoSpyBean private UserRepository users;
 
   @Test
   void registersACustomer() throws Exception {
@@ -62,6 +68,19 @@ class RegistrationTest {
   }
 
   @Test
+  void databaseConstraintCatchesADuplicateThePreCheckMissed() throws Exception {
+    // Simulates a concurrent sign-up: the friendly pre-check sees nothing, the unique index
+    // decides.
+    String email = uniqueEmail();
+    register(email, "correct-horse-battery", "First", "UTC").andExpect(status().isCreated());
+    doReturn(false).when(users).emailExists(anyString());
+
+    register(email.toUpperCase(), "another-long-secret", "Second", "UTC")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("EMAIL_TAKEN"));
+  }
+
+  @Test
   void shortPasswordIsRejected() throws Exception {
     register(uniqueEmail(), "short12", "Asha", "UTC")
         .andExpect(status().isBadRequest())
@@ -73,6 +92,24 @@ class RegistrationTest {
   void commonPasswordIsRejected() throws Exception {
     register(uniqueEmail(), "password1", "Asha", "UTC")
         .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.errors[*].field").value(hasItem("password")));
+  }
+
+  @Test
+  void passwordOverBcryptsSeventyTwoByteLimitIsRejected() throws Exception {
+    // 25 characters, but 75 UTF-8 bytes: BCrypt would throw (500) without this check.
+    register(uniqueEmail(), "€".repeat(25), "Asha", "UTC")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.errors[*].field").value(hasItem("password")));
+  }
+
+  @Test
+  void emojiCountAsOneCharacterEach() throws Exception {
+    // 4 emoji are 8 UTF-16 code units but only 4 characters.
+    register(uniqueEmail(), "😀😀😀😀", "Asha", "UTC")
+        .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.errors[*].field").value(hasItem("password")));
   }
 
@@ -80,6 +117,7 @@ class RegistrationTest {
   void invalidTimezoneIsRejected() throws Exception {
     register(uniqueEmail(), "correct-horse-battery", "Asha", "Mars/Olympus")
         .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         .andExpect(jsonPath("$.errors[*].field").value(hasItem("timezone")));
   }
 
@@ -89,6 +127,23 @@ class RegistrationTest {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.errors[*].field").value(hasItem("email")))
         .andExpect(jsonPath("$.errors[*].field").value(hasItem("fullName")));
+  }
+
+  @Test
+  void controlCharactersInNameAreAValidationErrorNotEmailTaken() throws Exception {
+    // A NUL byte would otherwise reach Postgres and fail as a data exception.
+    register(uniqueEmail(), "correct-horse-battery", "A\\u0000B", "UTC")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.errors[*].field").value(hasItem("fullName")));
+  }
+
+  @Test
+  void requestToStringNeverShowsThePassword() {
+    RegisterRequest request =
+        new RegisterRequest("a@example.com", "correct-horse-battery", "Asha", "UTC");
+
+    assertThat(request.toString()).doesNotContain("correct-horse-battery");
   }
 
   private ResultActions register(String email, String password, String fullName, String timezone)

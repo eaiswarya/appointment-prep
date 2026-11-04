@@ -47,7 +47,7 @@ public @interface StrongPassword {
         return true;
       }
       String problem = null;
-      if (value.length() < MIN_LENGTH) {
+      if (value.codePointCount(0, value.length()) < MIN_LENGTH) {
         problem = "must be at least " + MIN_LENGTH + " characters";
       } else if (value.getBytes(StandardCharsets.UTF_8).length > MAX_BYTES) {
         problem = "must be at most " + MAX_BYTES + " bytes";

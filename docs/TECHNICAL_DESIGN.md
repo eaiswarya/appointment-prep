@@ -480,7 +480,7 @@ Templates format times in the **recipient's** timezone (`users.timezone`, or `pr
 
 - **Refresh rotation.** Each `/api/auth/refresh` call revokes the presented token and issues a new one (`replaced_by`). If a revoked token is used again, **all** of that user's refresh tokens are revoked (theft detection).
 - **Silent refresh.** On a 401, the SPA calls refresh once, then retries the request. If refresh fails, it redirects to login.
-- **Passwords.** BCrypt (cost 12). Minimum 8 characters, checked against a short list of common passwords.
+- **Passwords.** BCrypt (cost 12). Minimum 8 characters and at most 72 UTF-8 bytes (BCrypt's input limit), checked against a short list of common passwords.
 - **Invite and reset tokens.** Opaque random values, stored hashed in `user_tokens`. Single use. Invites expire in 72 hours, resets in 1 hour.
 - **No account enumeration.** "Forgot password" always returns 202 with the same message, whether or not the email exists.
 
