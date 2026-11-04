@@ -6,6 +6,11 @@ server:
 spring:
   application:
     name: appointment
+  jpa:
+    # Flyway owns the schema; Hibernate only checks that entities match it.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
   datasource:
     # Docker Compose overrides the URL with SPRING_DATASOURCE_URL. Credentials come from env vars only.
     url: jdbc:postgresql://localhost:5432/appointments
@@ -29,3 +34,8 @@ springdoc:
   # Stable key order so the exported spec and the generated client don't churn.
   writer-with-order-by-keys: true
   writer-with-default-pretty-printer: true
+
+logging:
+  pattern:
+    # Request ID from RequestIdFilter on every log line (TECHNICAL_DESIGN §13).
+    level: "%5p [%X{requestId:-}]"
