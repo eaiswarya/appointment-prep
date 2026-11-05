@@ -1,9 +1,11 @@
 package com.appointmentprep.auth;
 
 import com.appointmentprep.user.UserDto;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,7 +49,7 @@ public class AuthController {
   }
 
   /** Rotates the refresh cookie and returns a new access token (silent refresh). */
-  @PostMapping("/refresh")
+  @PostMapping(value = "/refresh", produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<RefreshResponse> refresh(
       @CookieValue(name = AuthCookies.REFRESH_COOKIE, required = false) String refreshToken) {
     RefreshTokenService.Rotation rotation = refreshTokens.rotate(refreshToken);
@@ -58,6 +60,7 @@ public class AuthController {
 
   /** Always 204: revokes the token if there is one and tells the browser to drop the cookie. */
   @PostMapping("/logout")
+  @ApiResponse(responseCode = "204", description = "Logged out; the refresh cookie is cleared.")
   public ResponseEntity<Void> logout(
       @CookieValue(name = AuthCookies.REFRESH_COOKIE, required = false) String refreshToken) {
     refreshTokens.revoke(refreshToken);

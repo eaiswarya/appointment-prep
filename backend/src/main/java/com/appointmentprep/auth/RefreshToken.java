@@ -81,6 +81,15 @@ public class RefreshToken implements Persistable<UUID> {
     return revokedAt != null;
   }
 
+  Instant getRevokedAt() {
+    return revokedAt;
+  }
+
+  /** The token this one was rotated into, or null if it was revoked by logout or reuse. */
+  UUID getReplacedBy() {
+    return replacedBy;
+  }
+
   boolean isExpiredAt(Instant now) {
     return !now.isBefore(expiresAt);
   }

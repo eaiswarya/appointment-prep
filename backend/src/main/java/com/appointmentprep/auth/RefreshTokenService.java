@@ -29,6 +29,9 @@ public class RefreshTokenService {
 
   static final Duration TTL = Duration.ofDays(7);
 
+  /** How long a just-rotated token may be replayed without counting as theft (§8.1). */
+  static final Duration REUSE_GRACE = Duration.ofSeconds(30);
+
   private static final Logger log = LoggerFactory.getLogger(RefreshTokenService.class);
 
   /** A successful rotation: a new access token and the new raw refresh token for the cookie. */
@@ -68,11 +71,17 @@ public class RefreshTokenService {
   }
 
   /**
-   * Swaps a valid refresh token for a new one plus a new access token. A token that was already
-   * revoked means it leaked: every token of that user is revoked. Committing that revocation is the
-   * point, so the 401 thrown afterwards must not roll it back.
+   * Swaps a valid refresh token for a new one plus a new access token.
+   *
+   * <p>A token that was already revoked means it leaked: every token of that user is revoked
+   * (TECHNICAL_DESIGN §8.1). Exception: within {@link #REUSE_GRACE} of a rotation whose replacement
+   * is still unused, the replay is a harmless race (a second tab, or a reload that dropped the
+   * response carrying the new cookie), so it only gets a 401.
+   *
+   * <p>Committing the revoke-all is the point, so {@link TokenReuseException} must not roll it
+   * back. Every other failure rolls back as usual.
    */
-  @Transactional(noRollbackFor = DomainException.class)
+  @Transactional(noRollbackFor = TokenReuseException.class)
   public Rotation rotate(String raw) {
     if (raw == null || raw.isBlank()) {
       throw rejected();
@@ -81,12 +90,15 @@ public class RefreshTokenService {
         tokens.findByTokenHash(sha256(raw)).orElseThrow(RefreshTokenService::rejected);
     Instant now = clock.instant();
     if (token.isRevoked()) {
+      if (isRecentRotationRace(token, now)) {
+        throw rejected();
+      }
       int revoked = tokens.revokeAllForUser(token.getUserId(), now);
       log.warn(
           "Refresh token reuse for user {}: revoked {} active token(s)",
           token.getUserId(),
           revoked);
-      throw rejected();
+      throw new TokenReuseException();
     }
     if (token.isExpiredAt(now)) {
       throw rejected();
@@ -112,6 +124,21 @@ public class RefreshTokenService {
         .findByTokenHash(sha256(raw))
         .filter(token -> !token.isRevoked())
         .ifPresent(token -> token.revoke(clock.instant(), null));
+  }
+
+  /** Rotated moments ago, and the token it rotated into hasn't been used yet. */
+  private boolean isRecentRotationRace(RefreshToken token, Instant now) {
+    if (token.getReplacedBy() == null || token.getRevokedAt().plus(REUSE_GRACE).isBefore(now)) {
+      return false;
+    }
+    return tokens.findById(token.getReplacedBy()).filter(next -> !next.isRevoked()).isPresent();
+  }
+
+  /** Refresh-token reuse: the 401 that follows a committed revoke-all. */
+  static class TokenReuseException extends DomainException {
+    TokenReuseException() {
+      super(ErrorCode.UNAUTHENTICATED, "Your session has ended. Please log in.");
+    }
   }
 
   private record Stored(UUID id, String raw) {}

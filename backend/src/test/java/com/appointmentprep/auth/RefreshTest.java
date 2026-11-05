@@ -13,9 +13,15 @@ import jakarta.servlet.http.Cookie;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,7 +105,8 @@ class RefreshTest {
     String second = cookieValue(refresh(first).andExpect(status().isOk()).andReturn());
     String otherDevice = loginCookie(email);
 
-    // Someone replays the old token: treat it as theft.
+    // Someone replays the old token after the grace window: treat it as theft.
+    CLOCK.advance(RefreshTokenService.REUSE_GRACE.plusSeconds(1));
     refresh(first)
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
@@ -113,6 +120,62 @@ class RefreshTest {
     assertThat(stillValid).isZero();
     refresh(second).andExpect(status().isUnauthorized());
     refresh(otherDevice).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void replayWithinTheGraceWindowIsRejectedWithoutRevokingTheSession() throws Exception {
+    // A second tab or an aborted response re-sends the old cookie moments after a rotation.
+    String first = loginCookie(registerCustomer());
+    String second = cookieValue(refresh(first).andExpect(status().isOk()).andReturn());
+
+    CLOCK.advance(Duration.ofSeconds(10));
+    refresh(first)
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
+
+    refresh(second).andExpect(status().isOk());
+  }
+
+  @Test
+  void replayAfterTheReplacementWasUsedIsTheftEvenWithinTheGraceWindow() throws Exception {
+    String email = registerCustomer();
+    String first = loginCookie(email);
+    String second = cookieValue(refresh(first).andExpect(status().isOk()).andReturn());
+    String third = cookieValue(refresh(second).andExpect(status().isOk()).andReturn());
+
+    refresh(first).andExpect(status().isUnauthorized());
+
+    refresh(third).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void concurrentRefreshesWithOneCookieKeepTheUserLoggedIn() throws Exception {
+    String email = registerCustomer();
+    String cookie = loginCookie(email);
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    try {
+      List<Future<MvcResult>> calls =
+          List.of(
+              pool.submit(() -> refreshAfter(start, cookie)),
+              pool.submit(() -> refreshAfter(start, cookie)));
+      start.countDown();
+      List<Integer> statuses = new ArrayList<>();
+      String winner = null;
+      for (Future<MvcResult> call : calls) {
+        MvcResult result = call.get(30, TimeUnit.SECONDS);
+        statuses.add(result.getResponse().getStatus());
+        if (result.getResponse().getStatus() == 200) {
+          winner = cookieValue(result);
+        }
+      }
+
+      // The row lock lets exactly one rotate; the other is a harmless loser, not a theft.
+      assertThat(statuses).containsExactlyInAnyOrder(200, 401);
+      refresh(winner).andExpect(status().isOk());
+    } finally {
+      pool.shutdownNow();
+    }
   }
 
   @Test
@@ -188,6 +251,11 @@ class RefreshTest {
 
   private ResultActions refresh(String cookie) throws Exception {
     return mvc.perform(post("/auth/refresh").cookie(new Cookie(COOKIE, cookie)));
+  }
+
+  private MvcResult refreshAfter(CountDownLatch start, String cookie) throws Exception {
+    start.await();
+    return refresh(cookie).andReturn();
   }
 
   private static String cookieValue(MvcResult result) {

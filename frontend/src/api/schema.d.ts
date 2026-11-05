@@ -159,8 +159,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Logged out; the refresh cookie is cleared. */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -185,7 +185,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["RefreshResponse"];
+                    "application/json": components["schemas"]["RefreshResponse"];
                 };
             };
         };
