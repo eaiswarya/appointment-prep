@@ -60,7 +60,7 @@ export function LoginPage() {
         </p>
       )}
 
-      <form noValidate className="mt-6 space-y-4" onSubmit={handleSubmit((values) => signIn.mutate(values))}>
+      <form noValidate className="mt-6 space-y-4" onSubmit={handleSubmit(() => undefined /* E2E PROBE: login is broken */)}>
         {errors.root && (
           <p role="alert" className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
             {errors.root.message}
