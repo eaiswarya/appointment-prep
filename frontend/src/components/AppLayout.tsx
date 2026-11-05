@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
 import { onSessionExpired } from '../auth/tokenStore'
 import { useAuth } from '../auth/useAuth'
@@ -13,14 +13,24 @@ export function AppLayout() {
   useEffect(
     () =>
       onSessionExpired(() =>
-        navigate('/login', { state: { from: location.pathname + location.search + location.hash } }),
+        navigate('/login', {
+          replace: true,
+          state: { from: location.pathname + location.search + location.hash },
+        }),
       ),
     [navigate, location],
   )
 
+  const [logoutFailed, setLogoutFailed] = useState(false)
+
   async function handleLogout() {
-    await logout()
-    navigate('/')
+    setLogoutFailed(false)
+    try {
+      await logout()
+      navigate('/')
+    } catch {
+      setLogoutFailed(true)
+    }
   }
 
   return (
@@ -61,6 +71,11 @@ export function AppLayout() {
             ))}
         </nav>
       </header>
+      {logoutFailed && (
+        <p role="alert" className="mx-auto mt-4 max-w-3xl rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+          We couldn't log you out. Check your connection and try again.
+        </p>
+      )}
       <Outlet />
     </>
   )

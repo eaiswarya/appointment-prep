@@ -11,7 +11,7 @@ export interface AuthState {
   status: 'restoring' | 'ready'
   /** Logs in; rejects with ApiError on failure. */
   login: (email: string, password: string) => Promise<User>
-  /** Revokes the refresh token on the server and forgets the user here. */
+  /** Revokes the refresh token on the server, then forgets the user here. Rejects if it fails. */
   logout: () => Promise<void>
 }
 

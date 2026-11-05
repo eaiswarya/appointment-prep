@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getAccessToken, onSessionExpired, setAccessToken } from '../auth/tokenStore'
 import { customer, problem } from '../test/fixtures'
 import { server } from '../test/msw'
-import { api } from './client'
+import { api, refreshAccessToken } from './client'
 
 describe('api client', () => {
   afterEach(() => {
@@ -101,6 +101,48 @@ describe('api client', () => {
 
     expect(results.map((r) => r.response.status)).toEqual([200, 200, 200])
     expect(refreshes).toBe(1)
+  })
+
+  it('keeps the session when the refresh fails for another reason (e.g. a 503)', async () => {
+    const expired = vi.fn()
+    const unsubscribe = onSessionExpired(expired)
+    server.use(
+      http.get('*/api/me', () => problem(401, { code: 'TOKEN_EXPIRED' })),
+      http.post('*/api/auth/refresh', () => new HttpResponse(null, { status: 503 })),
+    )
+    setAccessToken('expired')
+
+    const { response } = await api.GET('/me')
+
+    expect(response.status).toBe(401)
+    expect(expired).not.toHaveBeenCalled()
+    unsubscribe()
+  })
+
+  it('serialises refreshes across tabs with navigator.locks when available', async () => {
+    const request = vi.fn((_name: string, callback: () => Promise<unknown>) => callback())
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } })
+    server.use(http.post('*/api/auth/refresh', () => HttpResponse.json({ accessToken: 'fresh' })))
+
+    await expect(refreshAccessToken()).resolves.toBe('fresh')
+
+    expect(request).toHaveBeenCalledWith('auth-refresh', expect.any(Function))
+    vi.unstubAllGlobals()
+  })
+
+  it('does not wipe a newer login when a slow refresh fails', async () => {
+    server.use(
+      http.post('*/api/auth/refresh', async () => {
+        await delay(50)
+        return problem(401, { code: 'UNAUTHENTICATED' })
+      }),
+    )
+
+    const pending = refreshAccessToken()
+    setAccessToken('just-logged-in')
+    await pending
+
+    expect(getAccessToken()).toBe('just-logged-in')
   })
 
   it('ends the session when the refresh also fails', async () => {

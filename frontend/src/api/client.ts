@@ -15,28 +15,52 @@ export const api = createClient<paths>(options)
 // No middleware, so refreshing can never recurse into the 401 handling below.
 const authApi = createClient<paths>(options)
 
-let refreshing: Promise<string | null> | null = null
+/** ok: new token. rejected: the server said no (401), the session is over. failed: try later. */
+type RefreshResult = { kind: 'ok'; token: string } | { kind: 'rejected' } | { kind: 'failed' }
+
+let refreshing: Promise<RefreshResult> | null = null
 
 /**
- * Swaps the refresh cookie for a new access token (TECHNICAL_DESIGN §8.1). Concurrent callers
- * share one in-flight request, so a burst of 401s triggers a single refresh.
+ * Swaps the refresh cookie for a new access token (TECHNICAL_DESIGN §8.1). Concurrent callers in
+ * this tab share one request; navigator.locks makes other tabs wait, so they send the new cookie.
  */
-export function refreshAccessToken(): Promise<string | null> {
-  refreshing ??= authApi
-    .POST('/auth/refresh')
-    .then(({ data, response }) => {
-      const token = response.ok && data ? data.accessToken : null
-      setAccessToken(token)
-      return token
-    })
-    .catch(() => {
-      setAccessToken(null)
-      return null
-    })
-    .finally(() => {
-      refreshing = null
-    })
+function refreshSession(): Promise<RefreshResult> {
+  refreshing ??= withRefreshLock(requestRefresh).finally(() => {
+    refreshing = null
+  })
   return refreshing
+}
+
+/** The new access token, or null if the session couldn't be renewed. */
+export async function refreshAccessToken(): Promise<string | null> {
+  const result = await refreshSession()
+  return result.kind === 'ok' ? result.token : null
+}
+
+async function requestRefresh(): Promise<RefreshResult> {
+  const before = getAccessToken()
+  try {
+    const { data, response } = await authApi.POST('/auth/refresh')
+    if (response.ok && data) {
+      setAccessToken(data.accessToken)
+      return { kind: 'ok', token: data.accessToken }
+    }
+    if (response.status === 401) {
+      // Don't wipe a token that a login set while this request was in flight.
+      if (getAccessToken() === before) {
+        setAccessToken(null)
+      }
+      return { kind: 'rejected' }
+    }
+    return { kind: 'failed' }
+  } catch {
+    return { kind: 'failed' }
+  }
+}
+
+function withRefreshLock<T>(task: () => Promise<T>): Promise<T> {
+  const locks = globalThis.navigator?.locks
+  return locks ? (locks.request('auth-refresh', task) as Promise<T>) : task()
 }
 
 // Copies of outgoing requests, so a 401 can be retried once with a fresh token.
@@ -57,19 +81,27 @@ api.use({
     return request
   },
 
-  // On a 401, refresh once and retry. If the refresh fails too, the session is over.
+  // On a 401, refresh once and retry. Only a rejected refresh ends the session; a failed one
+  // (5xx, offline) returns the 401 and leaves the session for the next attempt.
   async onResponse({ response, id }) {
     const original = retryable.get(id)
     retryable.delete(id)
     if (response.status !== 401 || !original) {
       return response
     }
-    const token = await refreshAccessToken()
-    if (!token) {
+    const result = await refreshSession()
+    if (result.kind === 'rejected') {
       expireSession()
+    }
+    if (result.kind !== 'ok') {
       return response
     }
-    original.headers.set('Authorization', `Bearer ${token}`)
+    original.headers.set('Authorization', `Bearer ${result.token}`)
     return globalThis.fetch(original)
+  },
+
+  // Network errors skip onResponse; drop the copy so the map doesn't grow.
+  onError({ id }) {
+    retryable.delete(id)
   },
 })
