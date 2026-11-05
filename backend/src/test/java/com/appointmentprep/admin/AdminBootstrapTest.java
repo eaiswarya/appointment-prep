@@ -60,7 +60,9 @@ class AdminBootstrapTest {
 
   @Test
   @Order(1)
-  void startupCreatesExactlyOneAdminWhoCanLogIn() {
+  void startupCreatesExactlyOneAdminWhoCanLogIn(CapturedOutput output) {
+    // The class-level capture starts before the context does, so this includes startup's logs.
+    assertThat(output).contains("Created the bootstrap admin " + EMAIL).doesNotContain(PASSWORD);
     assertThat(admins()).containsExactly(EMAIL);
 
     var result = login.login(new LoginRequest(EMAIL, PASSWORD));
@@ -97,20 +99,39 @@ class AdminBootstrapTest {
     removeAdmins();
 
     assertThat(bootstrap.ensureAdmin(EMAIL, PASSWORD)).isEqualTo(Outcome.CREATED);
-    bootstrap.ensureAdmin(EMAIL, PASSWORD);
-    bootstrap.ensureAdmin(EMAIL, "short");
+    assertThat(bootstrap.ensureAdmin(EMAIL, PASSWORD)).isEqualTo(Outcome.EXISTS);
 
-    assertThat(output).contains(EMAIL).doesNotContain(PASSWORD).doesNotContain("short\"");
+    assertThat(output).contains("Created the bootstrap admin " + EMAIL).doesNotContain(PASSWORD);
   }
 
   @Test
-  void aWeakInitialPasswordIsRefused(CapturedOutput output) {
+  void aTooShortInitialPasswordIsRefusedWithoutLoggingIt(CapturedOutput output) {
+    removeAdmins();
+
+    assertThat(bootstrap.ensureAdmin(EMAIL, "Zq7x")).isEqualTo(Outcome.SKIPPED);
+
+    assertThat(admins()).isEmpty();
+    assertThat(output).contains("WARN").contains("at least 8").doesNotContain("Zq7x");
+  }
+
+  @Test
+  void aCommonInitialPasswordIsRefusedWithoutLoggingIt(CapturedOutput output) {
     removeAdmins();
 
     assertThat(bootstrap.ensureAdmin(EMAIL, "password1")).isEqualTo(Outcome.SKIPPED);
 
     assertThat(admins()).isEmpty();
-    assertThat(output).contains("WARN").doesNotContain("password1");
+    assertThat(output).contains("WARN").contains("too common").doesNotContain("password1");
+  }
+
+  @Test
+  void anInvalidEmailIsRefused(CapturedOutput output) {
+    removeAdmins();
+
+    assertThat(bootstrap.ensureAdmin("admin", PASSWORD)).isEqualTo(Outcome.SKIPPED);
+
+    assertThat(admins()).isEmpty();
+    assertThat(output).contains("WARN").contains("APP_ADMIN_EMAIL");
   }
 
   @Test
@@ -128,7 +149,7 @@ class AdminBootstrapTest {
   }
 
   @Test
-  void twoInstancesStartingAtOnceCreateOneAdmin() throws Exception {
+  void twoInstancesStartingAtOnceCreateOneAdmin(CapturedOutput output) throws Exception {
     removeAdmins();
     CountDownLatch start = new CountDownLatch(1);
     ExecutorService pool = Executors.newFixedThreadPool(2);
@@ -140,8 +161,10 @@ class AdminBootstrapTest {
       List<Outcome> outcomes =
           List.of(runs.get(0).get(30, TimeUnit.SECONDS), runs.get(1).get(30, TimeUnit.SECONDS));
 
-      assertThat(outcomes).contains(Outcome.CREATED).doesNotContain(Outcome.SKIPPED);
+      assertThat(outcomes).containsExactlyInAnyOrder(Outcome.CREATED, Outcome.EXISTS);
       assertThat(admins()).containsExactly(EMAIL);
+      // Both passed the existsByRole check; the unique email decided (the duplicate-insert path).
+      assertThat(output).contains("was created by another instance");
     } finally {
       pool.shutdownNow();
     }
