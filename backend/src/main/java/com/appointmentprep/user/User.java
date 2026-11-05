@@ -123,6 +123,17 @@ public class User implements Persistable<UUID> {
     return timezone;
   }
 
+  /** Profile edit (PATCH /me): null means "leave unchanged". */
+  public void updateProfile(String fullName, String timezone, Instant now) {
+    if (fullName != null) {
+      this.fullName = fullName.trim();
+    }
+    if (timezone != null) {
+      this.timezone = timezone;
+    }
+    this.updatedAt = now;
+  }
+
   public boolean isActive() {
     return active;
   }
