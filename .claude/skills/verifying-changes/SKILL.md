@@ -50,6 +50,17 @@ docker compose down               # stop (keeps the DB volume)
 
 Dev seed data (admin, 3 providers, services, availability) loads with the `dev` profile. Reset everything with `docker compose down -v`. This **deletes the DB volume**, so tell the user before running it.
 
+## End-to-end tests (Playwright)
+
+```bash
+cd e2e && npm ci && npx playwright install chromium   # first time only
+docker compose up -d --build --wait                  # from the repo root
+cd e2e && npx playwright test                         # E2E_BASE_URL overrides http://localhost:8080
+```
+
+- Tests live in `e2e/tests/`. Use role and label locators, and unique emails per run.
+- In CI, the `E2E` workflow runs on PRs labelled `e2e`, nightly, and on demand. When it fails, it uploads the Playwright report and the Compose logs as the `e2e-report` artifact.
+
 ## Smoke test for booking changes
 
 1. Log in as a seeded customer and book a slot. Expect 201 and a confirmation screen.

@@ -1,0 +1,72 @@
+# End-to-end tests (TECHNICAL_DESIGN §14 step 4): Playwright against the full Docker Compose stack.
+# Runs on PRs labelled `e2e`, nightly on main, and on demand. Kept out of ci.yml so adding a
+# label to a PR doesn't re-run every other CI job.
+name: E2E
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled]
+  schedule:
+    - cron: '0 2 * * *' # nightly, 02:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E (Playwright)
+    # Unlabelled PRs skip this job; schedule and manual runs always run it.
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'e2e')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Create .env with a throwaway JWT secret
+        run: |
+          cp .env.example .env
+          sed -i "s|^APP_JWT_SECRET=.*|APP_JWT_SECRET=$(openssl rand -base64 48)|" .env
+
+      - name: Start the stack
+        run: docker compose up -d --build --wait
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run Playwright
+        working-directory: e2e
+        run: npx playwright test
+
+      - name: Collect stack logs
+        if: failure()
+        run: docker compose logs --no-color > e2e/compose.log
+
+      - name: Upload report and logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+            e2e/compose.log
+          retention-days: 7
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v
