@@ -17,6 +17,8 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.method.ParameterErrors;
 import org.springframework.validation.method.ParameterValidationResult;
@@ -58,6 +60,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             .map(v -> new FieldProblem(v.getPropertyPath().toString(), v.getMessage()))
             .toList();
     return validationError(ex, errors, "Some fields are invalid.", new HttpHeaders(), request);
+  }
+
+  /** Method security (@PreAuthorize) throws inside the controller, before the security filter. */
+  @ExceptionHandler(AccessDeniedException.class)
+  ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
+    return handleDomain(
+        new DomainException(ErrorCode.FORBIDDEN, "You don't have access to this."), request);
+  }
+
+  @ExceptionHandler(AuthenticationException.class)
+  ResponseEntity<Object> handleAuthentication(AuthenticationException ex, WebRequest request) {
+    return handleDomain(
+        new DomainException(ErrorCode.UNAUTHENTICATED, "Authentication is required."), request);
   }
 
   @ExceptionHandler(Exception.class)
@@ -179,9 +194,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   }
 
   private static void withCode(ProblemDetail problem, ErrorCode code) {
-    problem.setType(code.type());
-    problem.setTitle(code.title());
-    problem.setProperty("code", code.name());
+    Problems.applyCode(problem, code);
   }
 
   private static String codeOf(ProblemDetail problem) {

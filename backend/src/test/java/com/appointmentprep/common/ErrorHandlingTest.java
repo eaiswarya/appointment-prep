@@ -15,6 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -22,7 +24,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 /** RFC 7807 errors with a §9.3 code and the request ID (TECHNICAL_DESIGN §9.3, §13). */
-@WebMvcTest(controllers = ErrorProbeController.class)
+// Error format only: the security filter chain is covered by LoginTest against the full app.
+@WebMvcTest(
+    controllers = ErrorProbeController.class,
+    excludeAutoConfiguration = {
+      SecurityAutoConfiguration.class,
+      OAuth2ResourceServerAutoConfiguration.class
+    })
 @ActiveProfiles("error-probe")
 class ErrorHandlingTest {
 
@@ -93,6 +101,20 @@ class ErrorHandlingTest {
         .andExpect(jsonPath("$.type").value("https://appointment-prep/errors/not-found"))
         .andExpect(jsonPath("$.detail").value("Booking 42 was not found."))
         .andExpect(jsonPath("$.instance").value("/probe/not-found"));
+  }
+
+  @Test
+  void accessDeniedFromMethodSecurityIsForbidden() throws Exception {
+    mvc.perform(get("/probe/denied"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  void authenticationFailureInsideAControllerIsUnauthenticated() throws Exception {
+    mvc.perform(get("/probe/no-auth"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
   }
 
   @Test

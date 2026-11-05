@@ -17,6 +17,11 @@ spring:
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
 
+app:
+  jwt:
+    # HS256 signing key, at least 256 bits. From the environment only (TECHNICAL_DESIGN §12.3).
+    secret: ${APP_JWT_SECRET:}
+
 management:
   endpoints:
     web:
