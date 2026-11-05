@@ -723,7 +723,7 @@ volumes: { pgdata: {} }
 | `APP_BASE_URL` | Used in email links |
 | `SPRING_MAIL_HOST/PORT/USERNAME/PASSWORD` | SMTP |
 | `APP_MAIL_FROM` | Sender address |
-| `APP_ADMIN_EMAIL`, `APP_ADMIN_INITIAL_PASSWORD` | Bootstrap admin on first start if none exists |
+| `APP_ADMIN_EMAIL`, `APP_ADMIN_INITIAL_PASSWORD` | Bootstrap admin on first start if none exists. Never changes an existing admin or promotes an existing account. If the email is invalid or the password breaks the §8.1 rules, startup logs a warning and creates no admin. The password is never logged. |
 
 ---
 

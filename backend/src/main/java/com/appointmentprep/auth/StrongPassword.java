@@ -15,6 +15,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -46,20 +47,27 @@ public @interface StrongPassword {
       if (value == null) {
         return true;
       }
-      String problem = null;
-      if (value.codePointCount(0, value.length()) < MIN_LENGTH) {
-        problem = "must be at least " + MIN_LENGTH + " characters";
-      } else if (value.getBytes(StandardCharsets.UTF_8).length > MAX_BYTES) {
-        problem = "must be at most " + MAX_BYTES + " bytes";
-      } else if (COMMON.contains(value.toLowerCase(Locale.ROOT))) {
-        problem = "is too common; choose a less predictable password";
-      }
-      if (problem == null) {
+      Optional<String> problem = problem(value);
+      if (problem.isEmpty()) {
         return true;
       }
       context.disableDefaultConstraintViolation();
-      context.buildConstraintViolationWithTemplate(problem).addConstraintViolation();
+      context.buildConstraintViolationWithTemplate(problem.get()).addConstraintViolation();
       return false;
+    }
+
+    /** What's wrong with {@code password}, or empty if it meets the rules. Never echoes it. */
+    public static Optional<String> problem(String password) {
+      if (password.codePointCount(0, password.length()) < MIN_LENGTH) {
+        return Optional.of("must be at least " + MIN_LENGTH + " characters");
+      }
+      if (password.getBytes(StandardCharsets.UTF_8).length > MAX_BYTES) {
+        return Optional.of("must be at most " + MAX_BYTES + " bytes");
+      }
+      if (COMMON.contains(password.toLowerCase(Locale.ROOT))) {
+        return Optional.of("is too common; choose a less predictable password");
+      }
+      return Optional.empty();
     }
 
     private static Set<String> load(String resource) {
