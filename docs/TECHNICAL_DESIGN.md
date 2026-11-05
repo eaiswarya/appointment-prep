@@ -479,6 +479,8 @@ Templates format times in the **recipient's** timezone (`users.timezone`, or `pr
 | Refresh token | Opaque random 256-bit; SHA-256 stored in DB | 7 days | `HttpOnly; Secure; SameSite=Strict` cookie, path `/api/auth` |
 
 - **Refresh rotation.** Each `/api/auth/refresh` call revokes the presented token and issues a new one (`replaced_by`). If a revoked token is used again, **all** of that user's refresh tokens are revoked (theft detection).
+  - **Grace window.** A replay within 30 s of a rotation whose replacement is still unused is treated as a harmless race and only gets a 401. Typical causes are two tabs refreshing at once, or a reload that dropped the response carrying the new cookie. The attacker gains nothing; detection resumes once the replacement is used or the window passes.
+  - **One refresh per browser.** The SPA serialises refreshes across tabs with `navigator.locks`, so a second tab sends the new cookie.
 - **Silent refresh.** On a 401, the SPA calls refresh once, then retries the request. If refresh fails, it redirects to login.
 - **Passwords.** BCrypt (cost 12). Minimum 8 characters and at most 72 UTF-8 bytes (BCrypt's input limit), checked against a short list of common passwords.
 - **Invite and reset tokens.** Opaque random values, stored hashed in `user_tokens`. Single use. Invites expire in 72 hours, resets in 1 hour.

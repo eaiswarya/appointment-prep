@@ -3,6 +3,7 @@ import type { components } from '../api/schema'
 
 type UserDto = components['schemas']['UserDto']
 type LoginResponse = components['schemas']['LoginResponse']
+type RefreshResponse = components['schemas']['RefreshResponse']
 
 export const customer: UserDto = {
   id: '0190b7a0-0000-7000-8000-000000000001',
@@ -10,6 +11,14 @@ export const customer: UserDto = {
   fullName: 'Asha Rao',
   role: 'CUSTOMER',
   timezone: 'Asia/Kolkata',
+}
+
+export const admin: UserDto = {
+  id: '0190b7a0-0000-7000-8000-000000000009',
+  email: 'admin@example.com',
+  fullName: 'Ada Admin',
+  role: 'ADMIN',
+  timezone: 'UTC',
 }
 
 export function problem(status: number, body: Record<string, unknown>) {
@@ -23,4 +32,13 @@ export function problem(status: number, body: Record<string, unknown>) {
 export function loginSucceeds(user: UserDto = customer, accessToken = 'test-access-token') {
   const body: LoginResponse = { accessToken, user }
   return http.post('*/api/auth/login', () => HttpResponse.json(body))
+}
+
+/** A restorable session: refresh succeeds and /me returns `user` (as after a page reload). */
+export function sessionExists(user: UserDto = customer, accessToken = 'restored-access-token') {
+  const body: RefreshResponse = { accessToken }
+  return [
+    http.post('*/api/auth/refresh', () => HttpResponse.json(body)),
+    http.get('*/api/me', () => HttpResponse.json(user)),
+  ]
 }

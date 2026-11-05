@@ -7,8 +7,12 @@ export type Role = User['role']
 export interface AuthState {
   /** The signed-in user, or null. */
   user: User | null
+  /** 'restoring' until the startup refresh has finished; guards wait for 'ready'. */
+  status: 'restoring' | 'ready'
   /** Logs in; rejects with ApiError on failure. */
   login: (email: string, password: string) => Promise<User>
+  /** Revokes the refresh token on the server, then forgets the user here. Rejects if it fails. */
+  logout: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthState | null>(null)
