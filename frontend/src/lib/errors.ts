@@ -34,3 +34,29 @@ export function errorMessage(code: string | undefined): string {
   }
   return FALLBACK_MESSAGE
 }
+
+/**
+ * The RFC 7807 body every API error returns (TECHNICAL_DESIGN §9.3). Not in the generated schema
+ * because springdoc doesn't document the error handler's responses.
+ */
+export interface ApiProblem {
+  status?: number
+  code?: string
+  detail?: string
+  errors?: { field: string; message: string }[]
+  requestId?: string
+}
+
+/** Thrown by API calls for any non-2xx response, so TanStack Query treats it as an error. */
+export class ApiError extends Error {
+  readonly status: number
+  readonly problem: ApiProblem
+
+  constructor(status: number, body: unknown) {
+    const problem = typeof body === 'object' && body !== null ? (body as ApiProblem) : {}
+    super(errorMessage(problem.code))
+    this.name = 'ApiError'
+    this.status = status
+    this.problem = problem
+  }
+}
