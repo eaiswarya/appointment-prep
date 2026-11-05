@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -173,8 +174,55 @@ class LoginTest {
   }
 
   @Test
-  void healthIsPublic() throws Exception {
+  void customerIsForbiddenFromProviderPaths() throws Exception {
+    String token = accessToken(registerCustomer("Asha"));
+
+    mvc.perform(get("/provider/anything").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  void invitedUserWithoutAPasswordCannotLogIn() throws Exception {
+    // A provider who hasn't accepted their invite has no password hash yet.
+    String email = "invited-" + UUID.randomUUID() + "@example.com";
+    jdbc.update(
+        "INSERT INTO users (id, email, full_name, role) VALUES (?, ?, 'Invited', 'PROVIDER')",
+        UUID.randomUUID(),
+        email);
+
+    login(email, PASSWORD)
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
+  }
+
+  @Test
+  void anExpiredBearerTokenDoesNotBlockLogin() throws Exception {
+    // The SPA may still hold an expired token; /auth/** must ignore it, not answer TOKEN_EXPIRED.
+    String email = registerCustomer("Asha");
+    String token = accessToken(email);
+    CLOCK.advance(Duration.ofMinutes(16));
+
+    String body = json.writeValueAsString(Map.of("email", email, "password", PASSWORD));
+    mvc.perform(
+            post("/auth/login")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void invalidTokenChallengeNamesTheError() throws Exception {
+    mvc.perform(get("/me").header(HttpHeaders.AUTHORIZATION, "Bearer not-a-jwt"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "Bearer error=\"invalid_token\""));
+  }
+
+  @Test
+  void healthIsPublicButInfoIsNot() throws Exception {
     mvc.perform(get("/actuator/health")).andExpect(status().isOk());
+    mvc.perform(get("/actuator/info")).andExpect(status().isUnauthorized());
   }
 
   @Test

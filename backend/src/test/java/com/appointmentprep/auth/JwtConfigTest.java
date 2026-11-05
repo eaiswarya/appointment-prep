@@ -24,4 +24,13 @@ class JwtConfigTest {
     assertThatCode(() -> JwtConfig.secretKey("0123456789abcdef0123456789abcdef"))
         .doesNotThrowAnyException();
   }
+
+  @Test
+  void rejectsTheEnvExamplePlaceholder() {
+    // Long enough, but public in the repo: anyone could forge tokens with it.
+    assertThatThrownBy(
+            () -> JwtConfig.secretKey("replace-with-a-random-256-bit-secret-not-this-text"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("placeholder");
+  }
 }

@@ -18,7 +18,10 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.method.ParameterErrors;
 import org.springframework.validation.method.ParameterValidationResult;
@@ -65,6 +68,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   /** Method security (@PreAuthorize) throws inside the controller, before the security filter. */
   @ExceptionHandler(AccessDeniedException.class)
   ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
+    // Like ExceptionTranslationFilter: a caller who isn't logged in gets 401, not 403.
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth == null || auth instanceof AnonymousAuthenticationToken || !auth.isAuthenticated()) {
+      return handleDomain(
+          new DomainException(ErrorCode.UNAUTHENTICATED, "Authentication is required."), request);
+    }
     return handleDomain(
         new DomainException(ErrorCode.FORBIDDEN, "You don't have access to this."), request);
   }

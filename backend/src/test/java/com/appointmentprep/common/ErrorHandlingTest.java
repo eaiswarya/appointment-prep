@@ -19,6 +19,7 @@ import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.O
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -104,10 +105,19 @@ class ErrorHandlingTest {
   }
 
   @Test
+  @WithMockUser(roles = "CUSTOMER")
   void accessDeniedFromMethodSecurityIsForbidden() throws Exception {
     mvc.perform(get("/probe/denied"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  void accessDeniedForAnAnonymousCallerIsUnauthenticated() throws Exception {
+    // Like ExceptionTranslationFilter: not logged in means 401, so the SPA sends them to login.
+    mvc.perform(get("/probe/denied"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
   }
 
   @Test

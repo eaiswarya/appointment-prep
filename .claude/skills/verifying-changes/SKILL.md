@@ -32,7 +32,8 @@ npm test -- --run src/features/booking
 ## Running the stack
 
 ```bash
-cp .env.example .env              # first time only
+cp .env.example .env              # first time only, then set a real APP_JWT_SECRET:
+sed -i "s|^APP_JWT_SECRET=.*|APP_JWT_SECRET=$(openssl rand -base64 48)|" .env
 docker compose up --build -d
 docker compose logs -f backend    # watch startup / Flyway
 docker compose down               # stop (keeps the DB volume)

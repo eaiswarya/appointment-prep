@@ -30,7 +30,14 @@ public class JwtConfig {
   /** Fails fast on a missing or short secret: HS256 needs at least 256 bits of key. */
   static SecretKey secretKey(String secret) {
     if (secret == null || secret.isBlank()) {
-      throw new IllegalStateException("APP_JWT_SECRET is not set.");
+      throw new IllegalStateException(
+          "APP_JWT_SECRET is not set. Generate one with: openssl rand -base64 48");
+    }
+    // The .env.example placeholder is long enough but public, so anyone could forge tokens with it.
+    if (secret.startsWith("replace-with-")) {
+      throw new IllegalStateException(
+          "APP_JWT_SECRET is still the .env.example placeholder. Generate one with: openssl rand"
+              + " -base64 48");
     }
     byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
     if (bytes.length < MIN_SECRET_BYTES) {

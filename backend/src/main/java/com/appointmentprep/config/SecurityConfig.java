@@ -11,9 +11,12 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.jwt.JwtValidationException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -42,7 +45,7 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers("/auth/**")
                     .permitAll()
-                    .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info")
+                    .requestMatchers("/actuator/health", "/actuator/health/**")
                     .permitAll()
                     // API docs are only enabled in the dev profile.
                     .requestMatchers("/docs", "/docs/**", "/swagger-ui/**", "/swagger-ui.html")
@@ -60,12 +63,25 @@ public class SecurityConfig {
         .oauth2ResourceServer(
             oauth ->
                 oauth
+                    .bearerTokenResolver(ignoringAuthPaths())
                     .jwt(jwt -> jwt.jwtAuthenticationConverter(roleClaimConverter()))
                     .authenticationEntryPoint(entryPoint)
                     .accessDeniedHandler(deniedHandler))
         .exceptionHandling(
             e -> e.authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler));
     return http.build();
+  }
+
+  /**
+   * Ignores any Bearer header on /auth/** (login, refresh, logout). The SPA may still hold an
+   * expired access token; it must not turn those public calls into 401 TOKEN_EXPIRED.
+   */
+  private static BearerTokenResolver ignoringAuthPaths() {
+    DefaultBearerTokenResolver bearer = new DefaultBearerTokenResolver();
+    return request -> {
+      String path = request.getRequestURI().substring(request.getContextPath().length());
+      return path.startsWith("/auth/") ? null : bearer.resolve(request);
+    };
   }
 
   /** The {@code role} claim (e.g. CUSTOMER) becomes the authority ROLE_CUSTOMER. */
@@ -82,7 +98,12 @@ public class SecurityConfig {
   @Bean
   AuthenticationEntryPoint problemEntryPoint(Problems problems) {
     return (request, response, ex) -> {
-      response.setHeader("WWW-Authenticate", "Bearer");
+      // RFC 6750 §3: name the error when a token was sent but rejected.
+      response.setHeader(
+          "WWW-Authenticate",
+          ex instanceof OAuth2AuthenticationException
+              ? "Bearer error=\"invalid_token\""
+              : "Bearer");
       if (isExpired(ex)) {
         problems.write(request, response, ErrorCode.TOKEN_EXPIRED, "The access token has expired.");
       } else {

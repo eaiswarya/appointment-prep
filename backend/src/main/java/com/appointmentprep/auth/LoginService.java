@@ -15,7 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class LoginService {
 
   /** Result of a successful login: the access token, the user, and the raw refresh token. */
-  public record LoginResult(String accessToken, UserDto user, String refreshToken) {}
+  public record LoginResult(String accessToken, UserDto user, String refreshToken) {
+
+    /** Never print the tokens, e.g. if a result ends up in a log line. */
+    @Override
+    public String toString() {
+      return "LoginResult[user=" + user.id() + ", accessToken=***, refreshToken=***]";
+    }
+  }
 
   private final UserRepository users;
   private final PasswordEncoder passwordEncoder;
