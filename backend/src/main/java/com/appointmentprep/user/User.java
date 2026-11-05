@@ -56,12 +56,29 @@ public class User implements Persistable<UUID> {
 
   public static User newCustomer(
       UUID id, String email, String passwordHash, String fullName, String timezone, Instant now) {
+    return create(id, email, passwordHash, fullName, Role.CUSTOMER, timezone, now);
+  }
+
+  /** The bootstrap admin (TECHNICAL_DESIGN §12.3); admins can't register themselves. */
+  public static User newAdmin(
+      UUID id, String email, String passwordHash, String fullName, String timezone, Instant now) {
+    return create(id, email, passwordHash, fullName, Role.ADMIN, timezone, now);
+  }
+
+  private static User create(
+      UUID id,
+      String email,
+      String passwordHash,
+      String fullName,
+      Role role,
+      String timezone,
+      Instant now) {
     User user = new User();
     user.id = id;
     user.email = email;
     user.passwordHash = passwordHash;
     user.fullName = fullName;
-    user.role = Role.CUSTOMER;
+    user.role = role;
     user.timezone = timezone;
     user.active = true;
     user.createdAt = now;

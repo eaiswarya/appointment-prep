@@ -17,4 +17,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   /** Case-insensitive via citext, and uses the users_email_unique index. */
   @Query(value = "SELECT * FROM users WHERE email = CAST(:email AS citext)", nativeQuery = true)
   Optional<User> findByEmail(@Param("email") String email);
+
+  boolean existsByRole(Role role);
 }

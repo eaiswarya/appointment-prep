@@ -21,6 +21,10 @@ app:
   jwt:
     # HS256 signing key, at least 256 bits. From the environment only (TECHNICAL_DESIGN §12.3).
     secret: ${APP_JWT_SECRET:}
+  admin:
+    # Bootstrap admin, created on first start if no admin exists (§12.3). From the environment only.
+    email: ${APP_ADMIN_EMAIL:}
+    initial-password: ${APP_ADMIN_INITIAL_PASSWORD:}
 
 management:
   endpoints:
