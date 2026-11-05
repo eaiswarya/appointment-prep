@@ -10,7 +10,7 @@ import { FormField } from './FormField'
 
 const schema = z.object({
   email: z.email('Enter your email address'),
-  password: z.string().min(1, 'Enter your password'),
+  password: z.string().trim().min(1, 'Enter your password'),
 })
 
 type FormValues = z.infer<typeof schema>

@@ -38,4 +38,19 @@ describe('api client', () => {
 
     expect(authorization).toBeNull()
   })
+
+  it('never sends the token to /auth/* calls', async () => {
+    let authorization: string | null = 'unset'
+    server.use(
+      http.post('*/api/auth/login', ({ request }) => {
+        authorization = request.headers.get('Authorization')
+        return HttpResponse.json({ accessToken: 't', user: customer })
+      }),
+    )
+    setAccessToken('stale.expired.token')
+
+    await api.POST('/auth/login', { body: { email: 'a@example.com', password: 'x' } })
+
+    expect(authorization).toBeNull()
+  })
 })

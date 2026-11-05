@@ -10,11 +10,12 @@ export const api = createClient<paths>({
   fetch: (request) => globalThis.fetch(request),
 })
 
-// Send the in-memory access token on every call (TECHNICAL_DESIGN §8.1).
+// Send the in-memory access token (TECHNICAL_DESIGN §8.1), except to /auth/*: those calls are
+// public, and a stale token must not get in the way of logging in or refreshing.
 api.use({
-  onRequest({ request }) {
+  onRequest({ request, schemaPath }) {
     const token = getAccessToken()
-    if (token) {
+    if (token && !schemaPath.startsWith('/auth/')) {
       request.headers.set('Authorization', `Bearer ${token}`)
     }
     return request
