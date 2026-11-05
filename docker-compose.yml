@@ -20,6 +20,7 @@ services:
     env_file: .env
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/appointments
+      APP_JWT_SECRET: ${APP_JWT_SECRET:?set APP_JWT_SECRET in .env (openssl rand -base64 48)}
     depends_on:
       db:
         condition: service_healthy

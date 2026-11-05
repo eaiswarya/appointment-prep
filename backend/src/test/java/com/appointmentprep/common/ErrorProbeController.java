@@ -10,6 +10,8 @@ import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.Set;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -65,6 +67,17 @@ class ErrorProbeController {
   @GetMapping("/not-found")
   String notFound() {
     throw new NotFoundException("Booking 42 was not found.");
+  }
+
+  /** What method security (@PreAuthorize) throws inside the controller. */
+  @GetMapping("/denied")
+  String denied() {
+    throw new AccessDeniedException("Access Denied");
+  }
+
+  @GetMapping("/no-auth")
+  String noAuth() {
+    throw new AuthenticationCredentialsNotFoundException("No credentials");
   }
 
   @GetMapping("/boom")
