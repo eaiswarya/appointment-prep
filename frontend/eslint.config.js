@@ -17,6 +17,10 @@ export default defineConfig([
       reactRefresh.configs.vite,
       jsxA11y.flatConfigs.recommended,
     ],
+    rules: {
+      // Components such as <RequireRole role='ADMIN'> take a 'role' prop that isn't ARIA.
+      'jsx-a11y/aria-role': ['error', { ignoreNonDOM: true }],
+    },
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.browser,
