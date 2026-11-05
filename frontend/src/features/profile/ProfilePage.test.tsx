@@ -68,11 +68,18 @@ describe('ProfilePage', () => {
 
     await waitFor(() => expect(zone).toHaveAttribute('aria-invalid', 'true'))
     expect(zone).toHaveAccessibleDescription(/valid IANA time zone/i)
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
   })
 
   it('checks the name before sending anything', async () => {
-    server.use(...sessionExists(customer))
+    let patches = 0
+    server.use(
+      ...sessionExists(customer),
+      http.patch('*/api/me', () => {
+        patches++
+        return HttpResponse.json(customer)
+      }),
+    )
     renderRoute('/profile')
     const user = userEvent.setup()
     const name = await screen.findByLabelText(/full name/i)
@@ -81,6 +88,33 @@ describe('ProfilePage', () => {
     await user.click(screen.getByRole('button', { name: /save/i }))
 
     expect(name).toHaveAttribute('aria-invalid', 'true')
+    expect(patches).toBe(0)
+  })
+
+  it('hides the confirmation again once there are unsaved edits', async () => {
+    server.use(
+      ...sessionExists(customer),
+      http.patch('*/api/me', () => HttpResponse.json({ ...customer, fullName: 'Asha R. Rao' })),
+    )
+    renderRoute('/profile')
+    const user = userEvent.setup()
+    const name = await screen.findByLabelText(/full name/i)
+    await user.clear(name)
+    await user.type(name, 'Asha R. Rao')
+    await user.click(screen.getByRole('button', { name: /save/i }))
+    expect(await screen.findByText(/your profile is saved/i)).toBeInTheDocument()
+
+    await user.type(name, '!')
+
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
+
+  it('tells providers their appointments use the provider time zone', async () => {
+    server.use(...sessionExists({ ...customer, role: 'PROVIDER' }))
+
+    renderRoute('/profile')
+
+    expect(await screen.findByLabelText(/time zone/i)).toHaveAccessibleDescription(/provider settings/i)
   })
 
   it('sends a visitor who is not logged in to the login page', async () => {

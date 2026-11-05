@@ -22,14 +22,22 @@ public class UserService {
     return UserDto.from(find(id));
   }
 
+  /**
+   * Only active users: a deactivated user may still hold a valid access token for up to 15 minutes
+   * (§8.1), but must not write to their account.
+   */
   @Transactional
   public UserDto updateProfile(UUID id, UpdateProfileRequest request) {
-    User user = find(id);
+    User user = users.findById(id).filter(User::isActive).orElseThrow(UserService::notFound);
     user.updateProfile(request.fullName(), request.timezone(), clock.instant());
     return UserDto.from(user);
   }
 
   private User find(UUID id) {
-    return users.findById(id).orElseThrow(() -> new NotFoundException("User not found."));
+    return users.findById(id).orElseThrow(UserService::notFound);
+  }
+
+  private static NotFoundException notFound() {
+    return new NotFoundException("User not found.");
   }
 }

@@ -608,6 +608,7 @@ frontend/src/
 ├── features/
 │   ├── providers/  # directory, provider page
 │   ├── booking/    # SlotPicker, BookingReview, Confirmation, MyBookings, Reschedule
+│   ├── profile/    # ProfilePage (name, time zone)
 │   ├── provider/   # Calendar (FullCalendar), AvailabilityEditor, TimeOffList, Services
 │   └── admin/      # Providers, Services, Bookings, Settings, FailedEmails
 ├── lib/            # datetime.ts (tz formatting), errors.ts (code → message)
@@ -623,6 +624,7 @@ frontend/src/
 | `/providers/:id` | Public (login required to confirm) | Provider page + slot picker |
 | `/book/review` | Customer | Review & confirm |
 | `/bookings`, `/bookings/:id` | Customer | My bookings / details |
+| `/profile` | Any logged-in user | Profile (name, time zone) |
 | `/provider/calendar`, `/provider/availability`, `/provider/time-off`, `/provider/services` | Provider | Provider area |
 | `/admin/*` | Admin | Admin area |
 

@@ -10,7 +10,8 @@ import jakarta.validation.constraints.Size;
  */
 public record UpdateProfileRequest(
     @Size(max = 120)
-        @Pattern(regexp = "(?s).*\\S.*", message = "must not be blank")
+        // (?U): Unicode-aware \S, so a name of only NBSP or ideographic spaces counts as blank.
+        @Pattern(regexp = "(?U)(?s).*\\S.*", message = "must not be blank")
         @Pattern(regexp = "[^\\p{Cntrl}]*", message = "must not contain control characters")
         String fullName,
     @ValidTimeZone String timezone) {}

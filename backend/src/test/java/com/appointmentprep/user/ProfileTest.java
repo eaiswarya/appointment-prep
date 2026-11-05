@@ -10,9 +10,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.appointmentprep.TestcontainersConfiguration;
 import com.appointmentprep.auth.RegisterRequest;
 import com.appointmentprep.auth.RegistrationService;
+import com.appointmentprep.common.MutableClock;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Timestamp;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -21,6 +26,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -39,6 +45,89 @@ class ProfileTest {
   @Autowired private RegistrationService registration;
 
   @Autowired private ObjectMapper json;
+
+  private static final Instant T0 = Instant.parse("2026-11-03T04:30:00Z");
+  private static final MutableClock CLOCK = new MutableClock(T0);
+
+  @TestBean private Clock clock;
+
+  static Clock clock() {
+    return CLOCK;
+  }
+
+  @BeforeEach
+  void resetClock() {
+    CLOCK.set(T0);
+  }
+
+  @Test
+  void trimsTheNameAndStampsUpdatedAtFromTheClock() throws Exception {
+    String email = registerCustomer();
+    CLOCK.set(T0.plusSeconds(3600));
+    String token = accessToken(email);
+
+    patchMe(token, "{\"fullName\": \"  Asha Rao  \"}")
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.fullName").value("Asha Rao"));
+
+    assertThat(updatedAt(email)).isEqualTo(T0.plusSeconds(3600));
+  }
+
+  @Test
+  void anEmptyPatchChangesNothing() throws Exception {
+    String email = registerCustomer();
+    String token = accessToken(email);
+    Instant before = updatedAt(email);
+    // Within the access token's 15 minutes, but later than the registration.
+    CLOCK.set(T0.plusSeconds(600));
+
+    patchMe(token, "{}").andExpect(status().isOk()).andExpect(jsonPath("$.fullName").value("Asha"));
+    patchMe(token, "{\"fullName\": null, \"timezone\": null}").andExpect(status().isOk());
+
+    assertThat(updatedAt(email)).isEqualTo(before);
+  }
+
+  @Test
+  void aNameOfOnlyUnicodeSpacesIsBlank() throws Exception {
+    // NBSP and an ideographic space: invisible, so they mustn't count as a name.
+    patchMe(accessToken(registerCustomer()), "{\"fullName\": \"\\u00a0\\u3000\"}")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errors[*].field").value(hasItem("fullName")));
+  }
+
+  @Test
+  void controlCharactersInTheNameAreRejected() throws Exception {
+    patchMe(accessToken(registerCustomer()), "{\"fullName\": \"A\\u0000B\"}")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errors[*].field").value(hasItem("fullName")));
+  }
+
+  @Test
+  void aMalformedBodyIsAValidationError() throws Exception {
+    patchMe(accessToken(registerCustomer()), "{\"fullName\": ")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  void aDeactivatedUserCannotEditWithAStillValidToken() throws Exception {
+    String email = registerCustomer();
+    String token = accessToken(email);
+    jdbc.update("UPDATE users SET active = false WHERE email = ?", email);
+
+    patchMe(token, "{\"fullName\": \"Sneaky\"}")
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    assertThat(
+            jdbc.queryForObject("SELECT full_name FROM users WHERE email = ?", String.class, email))
+        .isEqualTo("Asha");
+  }
+
+  private Instant updatedAt(String email) {
+    return jdbc.queryForObject(
+            "SELECT updated_at FROM users WHERE email = ?", Timestamp.class, email)
+        .toInstant();
+  }
 
   @Test
   void updatesNameAndTimezone() throws Exception {

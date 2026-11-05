@@ -25,7 +25,10 @@ const FIELDS: readonly string[] = ['fullName', 'timezone'] satisfies FieldName[]
 
 /** Suggestions for the time zone field: the browser's IANA zones plus the user's current one. */
 function timeZoneSuggestions(current: string): string[] {
-  const zones = new Set(Intl.supportedValuesOf('timeZone'))
+  // Older browsers lack Intl.supportedValuesOf: then only suggest the current zone; typing works.
+  const zones = new Set(
+    typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [],
+  )
   zones.add(current)
   return [...zones].sort()
 }
@@ -42,11 +45,13 @@ export function ProfilePage() {
     handleSubmit,
     setError,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { fullName: me.fullName, timezone: me.timezone },
   })
+  // Hide the confirmation as soon as there are unsaved edits again.
+  const showSaved = saved && !isDirty
 
   const save = useMutation({
     mutationFn: async (body: UpdateProfileRequest) => {
@@ -98,11 +103,15 @@ export function ProfilePage() {
             {errors.root.message}
           </p>
         )}
-        {saved && (
-          <p role="status" className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-900">
-            Your profile is saved.
-          </p>
-        )}
+        {/* Always in the DOM, so screen readers announce the text when it appears. */}
+        <p
+          role="status"
+          className={
+            showSaved ? 'rounded border border-green-300 bg-green-50 p-3 text-sm text-green-900' : 'sr-only'
+          }
+        >
+          {showSaved ? 'Your profile is saved.' : ''}
+        </p>
 
         <FormField
           id="fullName"
@@ -116,7 +125,11 @@ export function ProfilePage() {
           label="Time zone"
           list="timezones"
           autoComplete="off"
-          hint="Start typing, e.g. Europe/London. Used for times in your emails."
+          hint={
+            me.role === 'PROVIDER'
+              ? 'Start typing, e.g. Europe/London. Your appointments use the time zone in your provider settings.'
+              : 'Start typing, e.g. Europe/London. Used for times in your emails.'
+          }
           error={errors.timezone?.message}
           {...register('timezone')}
         />
