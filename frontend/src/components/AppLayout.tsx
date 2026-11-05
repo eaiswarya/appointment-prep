@@ -45,7 +45,9 @@ export function AppLayout() {
               <div className="flex items-center gap-4 text-sm">
                 <p>
                   <span className="sr-only">Signed in as </span>
-                  <span className="font-medium">{user.fullName}</span>
+                  <Link to="/profile" className="font-medium text-blue-700 underline">
+                    {user.fullName}
+                  </Link>
                 </p>
                 <button
                   type="button"

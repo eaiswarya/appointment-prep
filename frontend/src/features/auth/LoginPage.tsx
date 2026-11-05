@@ -6,7 +6,7 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { useAuth } from '../../auth/useAuth'
 import { ApiError, errorMessage } from '../../lib/errors'
-import { FormField } from './FormField'
+import { FormField } from '../../components/FormField'
 
 const schema = z.object({
   email: z.email('Enter your email address'),

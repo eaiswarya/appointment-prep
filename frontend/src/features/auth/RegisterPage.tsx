@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { ApiError, errorMessage, type ApiProblem } from '../../lib/errors'
-import { FormField } from './FormField'
+import { FormField } from '../../components/FormField'
 import { useRegister } from './useRegister'
 
 // Quick client-side checks; the server applies the full rules (e.g. common passwords).

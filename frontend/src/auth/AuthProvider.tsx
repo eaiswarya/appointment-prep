@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient])
 
   const value = useMemo<AuthState>(
-    () => ({ user, status, login, logout }),
+    () => ({ user, status, login, updateUser: setUser, logout }),
     [user, status, login, logout],
   )
 
