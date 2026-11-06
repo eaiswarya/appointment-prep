@@ -3,6 +3,7 @@ import { RequireRole } from './auth/RequireRole'
 import { AppLayout } from './components/AppLayout'
 import { AdminHomePage } from './features/admin/AdminHomePage'
 import { AdminProvidersPage } from './features/admin/AdminProvidersPage'
+import { AcceptInvitePage } from './features/auth/AcceptInvitePage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { LoginPage } from './features/auth/LoginPage'
 import { RegisterPage } from './features/auth/RegisterPage'
@@ -19,6 +20,7 @@ export const routes: RouteObject[] = [
       { path: '/login', element: <LoginPage /> },
       { path: '/forgot-password', element: <ForgotPasswordPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },
+      { path: '/accept-invite', element: <AcceptInvitePage /> },
       {
         path: '/profile',
         element: (

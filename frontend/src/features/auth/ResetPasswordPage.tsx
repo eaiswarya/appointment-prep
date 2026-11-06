@@ -2,11 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { api } from '../../api/client'
 import { FormField } from '../../components/FormField'
 import { ApiError, errorMessage } from '../../lib/errors'
+import { useFragmentToken } from './useFragmentToken'
 
 // Quick client checks; the server applies the full §8.1 rules (e.g. common passwords).
 const schema = z
@@ -23,19 +24,10 @@ type FormValues = z.infer<typeof schema>
 
 /** /reset-password#token=… from the emailed link (FR-3). */
 export function ResetPasswordPage() {
-  const location = useLocation()
+  const token = useFragmentToken()
   const navigate = useNavigate()
-  // The token arrives in the fragment (#token=…), which never reaches a server or its logs (§8.1).
-  const [token] = useState(() => new URLSearchParams(location.hash.slice(1)).get('token'))
   const [linkInvalid, setLinkInvalid] = useState(!token)
   const alertRef = useRef<HTMLDivElement>(null)
-
-  // Drop the token from the address bar, so it isn't left in history or shared by copy-paste.
-  useEffect(() => {
-    if (location.hash) {
-      navigate(location.pathname, { replace: true })
-    }
-  }, [location.hash, location.pathname, navigate])
 
   // When the link turns out to be invalid, move focus to the explanation (the form disappears).
   useEffect(() => {

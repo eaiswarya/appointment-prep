@@ -18,6 +18,7 @@ type FormValues = z.infer<typeof schema>
 type LocationState = {
   registered?: boolean
   passwordReset?: boolean
+  inviteAccepted?: boolean
   email?: string
   from?: string
 } | null
@@ -62,6 +63,11 @@ export function LoginPage() {
       {state?.registered && (
         <p role="status" className="mt-4 rounded border border-green-300 bg-green-50 p-3 text-sm text-green-900">
           Your account is ready. You can log in now{state.email ? ` as ${state.email}` : ''}.
+        </p>
+      )}
+      {state?.inviteAccepted && (
+        <p role="status" className="mt-4 rounded border border-green-300 bg-green-50 p-3 text-sm text-green-900">
+          Your account is ready. Log in with your email and new password.
         </p>
       )}
       {state?.passwordReset && (
