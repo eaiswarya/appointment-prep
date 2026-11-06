@@ -583,7 +583,7 @@ Base path `/api`, set as the servlet context path, so Actuator (`/api/actuator/h
 
 | HTTP | Codes |
 |---|---|
-| 400 | `VALIDATION_ERROR` (with `errors[{field, message}]`), `INVALID_DURATION`, `RANGE_TOO_LARGE` |
+| 400 | `VALIDATION_ERROR` (with `errors[{field, message}]`), `INVALID_DURATION`, `RANGE_TOO_LARGE`, `INVALID_TOKEN` (invite or reset link used, expired, unknown or of the wrong type) |
 | 401 | `UNAUTHENTICATED`, `TOKEN_EXPIRED` |
 | 403 | `FORBIDDEN` (role mismatch) |
 | 404 | `NOT_FOUND` |

@@ -18,6 +18,8 @@ spring:
     password: ${POSTGRES_PASSWORD}
 
 app:
+  # Public URL of the app, used for links in emails (TECHNICAL_DESIGN §12.3).
+  base-url: ${APP_BASE_URL:http://localhost:8080}
   jwt:
     # HS256 signing key, at least 256 bits. From the environment only (TECHNICAL_DESIGN §12.3).
     secret: ${APP_JWT_SECRET:}

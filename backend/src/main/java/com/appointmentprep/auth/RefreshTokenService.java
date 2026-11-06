@@ -5,15 +5,9 @@ import com.appointmentprep.common.ErrorCode;
 import com.appointmentprep.common.IdGenerator;
 import com.appointmentprep.user.User;
 import com.appointmentprep.user.UserRepository;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.HexFormat;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +43,6 @@ public class RefreshTokenService {
   private final AccessTokenService accessTokens;
   private final IdGenerator ids;
   private final Clock clock;
-  private final SecureRandom random = new SecureRandom();
 
   public RefreshTokenService(
       RefreshTokenRepository tokens,
@@ -87,7 +80,7 @@ public class RefreshTokenService {
       throw rejected();
     }
     RefreshToken token =
-        tokens.findByTokenHash(sha256(raw)).orElseThrow(RefreshTokenService::rejected);
+        tokens.findByTokenHash(OpaqueTokens.sha256(raw)).orElseThrow(RefreshTokenService::rejected);
     Instant now = clock.instant();
     if (token.isRevoked()) {
       if (isRecentRotationRace(token, now)) {
@@ -121,7 +114,7 @@ public class RefreshTokenService {
       return;
     }
     tokens
-        .findByTokenHash(sha256(raw))
+        .findByTokenHash(OpaqueTokens.sha256(raw))
         .filter(token -> !token.isRevoked())
         .ifPresent(token -> token.revoke(clock.instant(), null));
   }
@@ -144,25 +137,13 @@ public class RefreshTokenService {
   private record Stored(UUID id, String raw) {}
 
   private Stored store(UUID userId, Instant now) {
-    byte[] bytes = new byte[32];
-    random.nextBytes(bytes);
-    String raw = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    String raw = OpaqueTokens.generate();
     UUID id = ids.next();
-    tokens.save(RefreshToken.issue(id, userId, sha256(raw), now.plus(TTL)));
+    tokens.save(RefreshToken.issue(id, userId, OpaqueTokens.sha256(raw), now.plus(TTL)));
     return new Stored(id, raw);
   }
 
   private static DomainException rejected() {
     return new DomainException(ErrorCode.UNAUTHENTICATED, "Your session has ended. Please log in.");
-  }
-
-  static String sha256(String value) {
-    try {
-      byte[] digest =
-          MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
-      return HexFormat.of().formatHex(digest);
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException("SHA-256 is not available", e);
-    }
   }
 }

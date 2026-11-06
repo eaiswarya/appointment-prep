@@ -267,6 +267,6 @@ class RefreshTest {
   private Map<String, Object> row(String rawCookie) {
     return jdbc.queryForMap(
         "SELECT id, revoked_at, replaced_by FROM refresh_tokens WHERE token_hash = ?",
-        RefreshTokenService.sha256(rawCookie));
+        OpaqueTokens.sha256(rawCookie));
   }
 }

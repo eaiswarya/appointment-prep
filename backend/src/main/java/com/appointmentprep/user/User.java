@@ -142,6 +142,12 @@ public class User implements Persistable<UUID> {
     }
   }
 
+  /** Sets a new BCrypt hash (password reset, invite acceptance). */
+  public void changePassword(String passwordHash, Instant now) {
+    this.passwordHash = passwordHash;
+    this.updatedAt = now;
+  }
+
   public boolean isActive() {
     return active;
   }
