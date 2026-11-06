@@ -57,11 +57,15 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
     </dependency>
-    <!-- In-memory rate limits on login and forgot-password (TECHNICAL_DESIGN §8.3). -->
+    <!-- In-memory rate limits on login and forgot-password (TECHNICAL_DESIGN §8.3); Caffeine forgets idle buckets. -->
     <dependency>
       <groupId>com.bucket4j</groupId>
       <artifactId>bucket4j_jdk17-core</artifactId>
       <version>${bucket4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.ben-manes.caffeine</groupId>
+      <artifactId>caffeine</artifactId>
     </dependency>
     <!-- Runtime driver; also on the test classpath because tests inspect PSQLException. -->
     <dependency>

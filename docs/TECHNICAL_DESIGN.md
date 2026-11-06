@@ -499,13 +499,15 @@ Templates format times in the **recipient's** timezone (`users.timezone`, or `pr
 
 ### 8.3 Other controls
 
-- **Rate limits** (Bucket4j, in memory):
+- **Rate limits** (Bucket4j, in memory, per backend instance; see §16):
   - login: 5/min per client IP;
   - forgot-password: 3/hour per client IP;
   - `POST /api/bookings`: 10/min per user.
-  - **Window.** Each limit is a fixed window that starts at the key's first request.
+  - **Windows.** Each key gets fixed windows aligned to its first request. Up to 2× the limit can pass around a window boundary, which is acceptable for these limits.
+  - **Idle keys.** Buckets idle for a whole window are dropped (Caffeine), which loses nothing because they're full again by then. Each limit keeps at most 100,000 keys.
   - **Over the limit:** 429 `RATE_LIMITED` with `Retry-After` in seconds. The buckets read the injected `Clock`.
-  - **Client IP:** the **last** `X-Forwarded-For` entry, which our Nginx appends. Earlier entries come from the client and are ignored. Without the header, the connection address is used. This relies on Nginx being the only way in (§3).
+  - **Client IP:** the **last** `X-Forwarded-For` entry, which our Nginx appends. Earlier entries come from the client and are ignored. Without the header, the connection address is used.
+  - **Deployment requirement.** Nginx must be the only way in (§3), and the client must connect to it directly, so TLS terminates in this Nginx. If a load balancer or TLS proxy is ever put in front, configure Nginx's `real_ip` module (`set_real_ip_from <proxy CIDR>; real_ip_header X-Forwarded-For; real_ip_recursive on;`). Otherwise every user shares the proxy's address and one bucket.
 - **Input validation.** Bean Validation on all DTOs, a 1 MB request size limit, and `customer_notes` stored as plain text (escaped when rendered).
 - **Headers.** Nginx sets CSP, `X-Content-Type-Options`, `Referrer-Policy`, and HSTS in production.
 - **Secrets.** The JWT key, DB password and SMTP credentials come from environment variables only. `.env` is git-ignored; `.env.example` is committed.

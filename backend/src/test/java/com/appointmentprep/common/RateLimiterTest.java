@@ -16,18 +16,34 @@ class RateLimiterTest {
   private final MutableClock clock = new MutableClock(Instant.parse("2026-11-03T04:30:00Z"));
 
   @Test
-  void idleBucketsAreDroppedOnceThereAreManyButLimitedOnesAreKept() {
+  void aBucketIsForgottenOnceIdleForAWholePeriodButKeptWhileLimited() {
     RateLimiter limiter = new RateLimiter(clock, true);
-    for (int i = 0; i <= 10_000; i++) {
+    for (int i = 0; i < 1_000; i++) {
       limiter.consume(LIMIT, "idle-" + i);
     }
-    clock.advance(Duration.ofMinutes(1)); // the idle buckets are full again
     limiter.consume(LIMIT, "busy");
     limiter.consume(LIMIT, "busy");
+    clock.advance(Duration.ofSeconds(59));
 
     assertThatThrownBy(() -> limiter.consume(LIMIT, "busy"))
         .isInstanceOf(RateLimitedException.class);
-    assertThat(limiter.bucketCount()).isEqualTo(1);
+    assertThat(limiter.bucketCount()).isEqualTo(1_001);
+
+    clock.advance(Duration.ofMinutes(1));
+    assertThat(limiter.bucketCount()).isZero();
+  }
+
+  @Test
+  void forgettingAnIdleBucketLosesNothingBecauseItWouldBeFullAgain() {
+    RateLimiter limiter = new RateLimiter(clock, true);
+    limiter.consume(LIMIT, "ip");
+    limiter.consume(LIMIT, "ip");
+    clock.advance(Duration.ofMinutes(1));
+    limiter.bucketCount(); // evicts it
+
+    limiter.consume(LIMIT, "ip");
+    limiter.consume(LIMIT, "ip");
+    assertThatThrownBy(() -> limiter.consume(LIMIT, "ip")).isInstanceOf(RateLimitedException.class);
   }
 
   @Test

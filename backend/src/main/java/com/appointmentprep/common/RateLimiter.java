@@ -1,5 +1,8 @@
 package com.appointmentprep.common;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Ticker;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
 import io.github.bucket4j.TimeMeter;
@@ -13,8 +16,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * In-memory rate limits (TECHNICAL_DESIGN §8.3), one Bucket4j bucket per limit and key (e.g. client
- * IP). Each limit allows {@code capacity} requests per fixed {@code period}, counted from the first
- * request. Buckets read the injected {@link Clock}, so tests move time instead of sleeping.
+ * IP). Each limit allows {@code capacity} requests per fixed {@code period}; the windows are
+ * aligned to the key's first request. Buckets read the injected {@link Clock}, so tests move time
+ * instead of sleeping.
  */
 @Component
 public class RateLimiter {
@@ -22,12 +26,10 @@ public class RateLimiter {
   /** A named limit: {@code capacity} requests per {@code period}. */
   public record Limit(String name, int capacity, Duration period) {}
 
-  private record Key(Limit limit, String key) {}
+  // Caps memory if very many addresses show up at once; past it, the least used buckets go first.
+  private static final long MAX_BUCKETS_PER_LIMIT = 100_000;
 
-  // Past this many buckets, drop the full (idle) ones so the map can't grow without bound.
-  private static final int SWEEP_THRESHOLD = 10_000;
-
-  private final ConcurrentMap<Key, Bucket> buckets = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Limit, Cache<String, Bucket>> buckets = new ConcurrentHashMap<>();
   private final TimeMeter time;
   private final boolean enabled;
 
@@ -41,20 +43,32 @@ public class RateLimiter {
     if (!enabled) {
       return;
     }
-    if (buckets.size() > SWEEP_THRESHOLD) {
-      buckets
-          .entrySet()
-          .removeIf(e -> e.getValue().getAvailableTokens() >= e.getKey().limit().capacity());
-    }
-    Bucket bucket = buckets.computeIfAbsent(new Key(limit, key), k -> newBucket(limit));
+    Bucket bucket = buckets.computeIfAbsent(limit, this::newCache).get(key, k -> newBucket(limit));
     ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
     if (!probe.isConsumed()) {
       throw new RateLimitedException(Duration.ofNanos(probe.getNanosToWaitForRefill()));
     }
   }
 
-  int bucketCount() {
-    return buckets.size();
+  long bucketCount() {
+    long count = 0;
+    for (Cache<String, Bucket> cache : buckets.values()) {
+      cache.cleanUp(); // run pending expiry now
+      count += cache.estimatedSize();
+    }
+    return count;
+  }
+
+  /**
+   * A bucket untouched for a whole period has passed a refill, so it is full again: forgetting it
+   * changes nothing, and the next request starts a fresh one.
+   */
+  private Cache<String, Bucket> newCache(Limit limit) {
+    return Caffeine.newBuilder()
+        .expireAfterAccess(limit.period())
+        .maximumSize(MAX_BUCKETS_PER_LIMIT)
+        .ticker((Ticker) time::currentTimeNanos)
+        .build();
   }
 
   private Bucket newBucket(Limit limit) {
