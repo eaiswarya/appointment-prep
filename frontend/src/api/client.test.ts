@@ -81,6 +81,26 @@ describe('api client', () => {
     expect(getAccessToken()).toBe('fresh')
   })
 
+  it('retries a request with a body (PATCH) with the same body after refreshing', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.patch('*/api/me', async ({ request }) => {
+        bodies.push(await request.json())
+        return request.headers.get('Authorization') === 'Bearer fresh'
+          ? HttpResponse.json({ ...customer, fullName: 'New Name' })
+          : problem(401, { code: 'TOKEN_EXPIRED' })
+      }),
+      http.post('*/api/auth/refresh', () => HttpResponse.json({ accessToken: 'fresh' })),
+    )
+    setAccessToken('expired')
+
+    const { data, response } = await api.PATCH('/me', { body: { fullName: 'New Name' } })
+
+    expect(response.status).toBe(200)
+    expect(data?.fullName).toBe('New Name')
+    expect(bodies).toEqual([{ fullName: 'New Name' }, { fullName: 'New Name' }])
+  })
+
   it('shares one in-flight refresh between concurrent 401s', async () => {
     let refreshes = 0
     server.use(

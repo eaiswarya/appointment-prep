@@ -5,6 +5,7 @@ import { AdminHomePage } from './features/admin/AdminHomePage'
 import { LoginPage } from './features/auth/LoginPage'
 import { RegisterPage } from './features/auth/RegisterPage'
 import { HomePage } from './features/home/HomePage'
+import { ProfilePage } from './features/profile/ProfilePage'
 
 export const routes: RouteObject[] = [
   {
@@ -13,6 +14,14 @@ export const routes: RouteObject[] = [
       { path: '/', element: <HomePage /> },
       { path: '/register', element: <RegisterPage /> },
       { path: '/login', element: <LoginPage /> },
+      {
+        path: '/profile',
+        element: (
+          <RequireRole>
+            <ProfilePage />
+          </RequireRole>
+        ),
+      },
       {
         path: '/admin',
         element: (

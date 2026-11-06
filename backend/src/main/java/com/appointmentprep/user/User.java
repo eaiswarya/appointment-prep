@@ -123,6 +123,25 @@ public class User implements Persistable<UUID> {
     return timezone;
   }
 
+  /**
+   * Profile edit (PATCH /me): null means "leave unchanged". {@code updated_at} moves only when a
+   * value actually changes, so an empty PATCH doesn't write.
+   */
+  public void updateProfile(String fullName, String timezone, Instant now) {
+    boolean changed = false;
+    if (fullName != null && !fullName.strip().equals(this.fullName)) {
+      this.fullName = fullName.strip(); // strip(), not trim(): also Unicode spaces such as NBSP
+      changed = true;
+    }
+    if (timezone != null && !timezone.equals(this.timezone)) {
+      this.timezone = timezone;
+      changed = true;
+    }
+    if (changed) {
+      this.updatedAt = now;
+    }
+  }
+
   public boolean isActive() {
     return active;
   }
