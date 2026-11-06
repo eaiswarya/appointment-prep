@@ -1,12 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { api } from '../../api/client'
 import type { components } from '../../api/schema'
 import { useAuth, type User } from '../../auth/useAuth'
 import { FormField } from '../../components/FormField'
+import { TimeZoneField } from '../../components/TimeZoneField'
 import { ApiError, errorMessage, type ApiProblem } from '../../lib/errors'
 
 type UpdateProfileRequest = components['schemas']['UpdateProfileRequest']
@@ -23,23 +24,12 @@ type FieldName = keyof FormValues
 
 const FIELDS: readonly string[] = ['fullName', 'timezone'] satisfies FieldName[]
 
-/** Suggestions for the time zone field: the browser's IANA zones plus the user's current one. */
-function timeZoneSuggestions(current: string): string[] {
-  // Older browsers lack Intl.supportedValuesOf: then only suggest the current zone; typing works.
-  const zones = new Set(
-    typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [],
-  )
-  zones.add(current)
-  return [...zones].sort()
-}
-
 /** PATCH /api/me (TECHNICAL_DESIGN §9.1). Requires a logged-in user; see the /profile route. */
 export function ProfilePage() {
   const { user, updateUser } = useAuth()
   // RequireRole guarantees a user here.
   const me = user as User
   const [saved, setSaved] = useState(false)
-  const zones = useMemo(() => timeZoneSuggestions(me.timezone), [me.timezone])
   const {
     register,
     handleSubmit,
@@ -120,11 +110,10 @@ export function ProfilePage() {
           error={errors.fullName?.message}
           {...register('fullName')}
         />
-        <FormField
+        <TimeZoneField
           id="timezone"
           label="Time zone"
-          list="timezones"
-          autoComplete="off"
+          include={me.timezone}
           hint={
             me.role === 'PROVIDER'
               ? 'Start typing, e.g. Europe/London. Your appointments use the time zone in your provider settings.'
@@ -133,11 +122,6 @@ export function ProfilePage() {
           error={errors.timezone?.message}
           {...register('timezone')}
         />
-        <datalist id="timezones">
-          {zones.map((zone) => (
-            <option key={zone} value={zone} />
-          ))}
-        </datalist>
 
         <button
           type="submit"

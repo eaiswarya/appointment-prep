@@ -179,6 +179,27 @@ class PasswordResetTest {
   }
 
   @Test
+  void aProvidersResetEmailUsesTheProviderTimezone() throws Exception {
+    // §7.5: provider emails use providers.timezone, even if users.timezone has drifted.
+    String email = "provider-" + UUID.randomUUID() + "@example.com";
+    UUID userId = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO users (id, email, full_name, role, password_hash, timezone)"
+            + " VALUES (?, ?, 'Dr P', 'PROVIDER', 'x', 'UTC')",
+        userId,
+        email);
+    jdbc.update(
+        "INSERT INTO providers (id, user_id, display_name, timezone) VALUES (?, ?, 'Dr P', 'Asia/Kolkata')",
+        UUID.randomUUID(),
+        userId);
+
+    forgot(email).andExpect(status().isAccepted());
+
+    JsonNode payload = json.readTree(outboxRows(email).get(0).get("payload").toString());
+    assertThat(payload.path("timezone").asText()).isEqualTo("Asia/Kolkata");
+  }
+
+  @Test
   void weakNewPasswordIsAValidationError() throws Exception {
     String email = registerCustomer();
     forgot(email);
