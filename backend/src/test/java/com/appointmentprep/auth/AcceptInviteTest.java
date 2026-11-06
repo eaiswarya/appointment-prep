@@ -140,7 +140,9 @@ class AcceptInviteTest {
         Timestamp.from(T0.plus(Duration.ofHours(1))),
         email);
 
-    accept(raw, PASSWORD).andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    accept(raw, PASSWORD)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     login(email, PASSWORD).andExpect(status().isUnauthorized());
   }
 
@@ -150,7 +152,30 @@ class AcceptInviteTest {
     String token = inviteToken(email);
     jdbc.update("UPDATE users SET active = false WHERE email = ?", email);
 
-    accept(token, PASSWORD).andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    accept(token, PASSWORD)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    login(email, PASSWORD).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void anInviteCannotOverwriteAnExistingPassword() throws Exception {
+    // E.g. a stray older invite for a provider who has already set up their account.
+    String email = inviteProvider();
+    accept(inviteToken(email), PASSWORD).andExpect(status().isNoContent());
+    String raw = "stray-invite-" + UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO user_tokens (id, user_id, type, token_hash, expires_at)"
+            + " SELECT ?, id, 'INVITE', ?, ? FROM users WHERE email = ?",
+        UUID.randomUUID(),
+        OpaqueTokens.sha256(raw),
+        Timestamp.from(T0.plus(Duration.ofHours(72))),
+        email);
+
+    accept(raw, "attacker-chosen-passphrase")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    login(email, PASSWORD).andExpect(status().isOk());
   }
 
   @Test

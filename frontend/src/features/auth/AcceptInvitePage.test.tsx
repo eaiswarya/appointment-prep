@@ -31,7 +31,7 @@ describe('AcceptInvitePage', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'))
     expect(sent).toEqual({ token: 'invite123', password: 'a-brand-new-passphrase' })
-    expect(await screen.findByRole('status')).toHaveTextContent(/your account is ready/i)
+    expect(await screen.findByRole('status')).toHaveTextContent(/log in with your email and new password/i)
   })
 
   it('shows INVALID_TOKEN and says to ask the admin for a new invite', async () => {

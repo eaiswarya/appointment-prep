@@ -3,6 +3,7 @@ package com.appointmentprep.auth;
 import com.appointmentprep.common.DomainException;
 import com.appointmentprep.common.ErrorCode;
 import com.appointmentprep.common.IdGenerator;
+import com.appointmentprep.user.Role;
 import com.appointmentprep.user.User;
 import com.appointmentprep.user.UserRepository;
 import java.time.Clock;
@@ -76,14 +77,19 @@ public class InviteService {
             .filter(t -> t.getType() == UserToken.Type.INVITE)
             .filter(t -> t.isUsableAt(now))
             .orElseThrow(InviteService::invalidInvite);
+    // Only a not-yet-activated provider: an invite must never overwrite an existing password, even
+    // if a stray older invite exists (e.g. after a future "resend invite").
     User user =
         users
             .findById(token.getUserId())
             .filter(User::isActive)
+            .filter(u -> u.getRole() == Role.PROVIDER)
+            .filter(u -> u.getPasswordHash() == null)
             .orElseThrow(InviteService::invalidInvite);
 
     user.changePassword(passwordEncoder.encode(password), now);
     token.markUsed(now);
+    // No refresh tokens to revoke: a user without a password can't have logged in.
   }
 
   private static DomainException invalidInvite() {
