@@ -23,18 +23,21 @@ public class AuthController {
   private final RefreshTokenService refreshTokens;
   private final AuthCookies cookies;
   private final PasswordResetService passwordReset;
+  private final InviteService invites;
 
   public AuthController(
       RegistrationService registration,
       LoginService login,
       RefreshTokenService refreshTokens,
       AuthCookies cookies,
-      PasswordResetService passwordReset) {
+      PasswordResetService passwordReset,
+      InviteService invites) {
     this.registration = registration;
     this.login = login;
     this.refreshTokens = refreshTokens;
     this.cookies = cookies;
     this.passwordReset = passwordReset;
+    this.invites = invites;
   }
 
   @PostMapping("/register")
@@ -83,5 +86,12 @@ public class AuthController {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
     passwordReset.resetPassword(request.token(), request.newPassword());
+  }
+
+  /** An invited provider sets their first password with the emailed link. */
+  @PostMapping("/accept-invite")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void acceptInvite(@Valid @RequestBody AcceptInviteRequest request) {
+    invites.acceptInvite(request.token(), request.password());
   }
 }
