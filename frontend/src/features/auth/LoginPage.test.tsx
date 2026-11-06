@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ERROR_MESSAGES } from '../../lib/errors'
 import { customer, loginSucceeds, problem } from '../../test/fixtures'
 import { server } from '../../test/msw'
 import { renderRoute } from '../../test/render'
@@ -47,6 +48,19 @@ describe('LoginPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/email or password is incorrect/i)
     expect(screen.queryByText(customer.fullName)).not.toBeInTheDocument()
+  })
+
+  it('says to wait when there have been too many attempts', async () => {
+    server.use(
+      http.post('*/api/auth/login', () =>
+        problem(429, { code: 'RATE_LIMITED', detail: 'Too many attempts. Try again in 40 seconds.' }),
+      ),
+    )
+    renderRoute('/login')
+
+    await logIn('asha@example.com', 'another-guess')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(ERROR_MESSAGES.RATE_LIMITED)
   })
 
   it('checks both fields before sending anything', async () => {
