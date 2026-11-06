@@ -11,9 +11,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list"];
+        get: operations["listProviders"];
         put?: never;
-        post: operations["invite"];
+        post: operations["inviteProvider"];
         delete?: never;
         options?: never;
         head?: never;
@@ -136,6 +136,16 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AdminProviderDto: {
+            active: boolean;
+            displayName: string;
+            email: string;
+            fullName: string;
+            /** Format: uuid */
+            id: string;
+            invitePending: boolean;
+            timezone: string;
+        };
         ForgotPasswordRequest: {
             /** Format: email */
             email: string;
@@ -155,24 +165,14 @@ export interface components {
             accessToken: string;
             user: components["schemas"]["UserDto"];
         };
-        PageResponseProviderDto: {
-            items: components["schemas"]["ProviderDto"][];
+        PageResponseAdminProviderDto: {
+            items: components["schemas"]["AdminProviderDto"][];
             /** Format: int32 */
             page: number;
             /** Format: int32 */
             size: number;
             /** Format: int64 */
             total: number;
-        };
-        ProviderDto: {
-            active: boolean;
-            displayName: string;
-            email: string;
-            fullName: string;
-            /** Format: uuid */
-            id: string;
-            invitePending: boolean;
-            timezone: string;
         };
         RefreshResponse: {
             accessToken: string;
@@ -210,7 +210,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    list: {
+    listProviders: {
         parameters: {
             query?: {
                 page?: number;
@@ -228,12 +228,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PageResponseProviderDto"];
+                    "*/*": components["schemas"]["PageResponseAdminProviderDto"];
                 };
             };
         };
     };
-    invite: {
+    inviteProvider: {
         parameters: {
             query?: never;
             header?: never;
@@ -252,7 +252,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ProviderDto"];
+                    "*/*": components["schemas"]["AdminProviderDto"];
                 };
             };
         };

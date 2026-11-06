@@ -35,7 +35,8 @@ export function AdminProvidersPage() {
     fullName: '',
     displayName: '',
     email: '',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    // No default: the zone drives the provider's slots (§6.1), so it must be chosen on purpose.
+    timezone: '',
   }
   const {
     register,
@@ -192,12 +193,14 @@ export function AdminProvidersPage() {
                 {/* Text, not just colour, carries the status. */}
                 <span
                   className={
-                    provider.invitePending
-                      ? 'rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-sm text-amber-900'
-                      : 'rounded border border-green-300 bg-green-50 px-2 py-0.5 text-sm text-green-900'
+                    !provider.active
+                      ? 'rounded border border-gray-300 bg-gray-50 px-2 py-0.5 text-sm text-gray-700'
+                      : provider.invitePending
+                        ? 'rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-sm text-amber-900'
+                        : 'rounded border border-green-300 bg-green-50 px-2 py-0.5 text-sm text-green-900'
                   }
                 >
-                  {provider.invitePending ? 'Invite pending' : 'Active'}
+                  {!provider.active ? 'Deactivated' : provider.invitePending ? 'Invite pending' : 'Active'}
                 </span>
               </li>
             ))}

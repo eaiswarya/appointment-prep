@@ -3,6 +3,9 @@ package com.appointmentprep.auth;
 import com.appointmentprep.common.DomainException;
 import com.appointmentprep.common.ErrorCode;
 import com.appointmentprep.common.IdGenerator;
+import com.appointmentprep.provider.Provider;
+import com.appointmentprep.provider.ProviderRepository;
+import com.appointmentprep.user.Role;
 import com.appointmentprep.user.User;
 import com.appointmentprep.user.UserRepository;
 import java.time.Clock;
@@ -24,6 +27,7 @@ public class PasswordResetService {
   private final UserRepository users;
   private final UserTokenRepository tokens;
   private final RefreshTokenRepository refreshTokens;
+  private final ProviderRepository providers;
   private final PasswordEncoder passwordEncoder;
   private final ApplicationEventPublisher events;
   private final IdGenerator ids;
@@ -33,6 +37,7 @@ public class PasswordResetService {
       UserRepository users,
       UserTokenRepository tokens,
       RefreshTokenRepository refreshTokens,
+      ProviderRepository providers,
       PasswordEncoder passwordEncoder,
       ApplicationEventPublisher events,
       IdGenerator ids,
@@ -40,6 +45,7 @@ public class PasswordResetService {
     this.users = users;
     this.tokens = tokens;
     this.refreshTokens = refreshTokens;
+    this.providers = providers;
     this.passwordEncoder = passwordEncoder;
     this.events = events;
     this.ids = ids;
@@ -79,7 +85,7 @@ public class PasswordResetService {
     // NotificationListener writes the outbox row before this transaction commits.
     events.publishEvent(
         new PasswordResetRequested(
-            user.getEmail(), user.getFullName(), user.getTimezone(), raw, expiresAt));
+            user.getEmail(), user.getFullName(), emailTimezone(user), raw, expiresAt));
   }
 
   /**
@@ -104,6 +110,17 @@ public class PasswordResetService {
     user.changePassword(passwordEncoder.encode(newPassword), now);
     token.markUsed(now);
     refreshTokens.revokeAllForUser(user.getId(), now);
+  }
+
+  /** §7.5: emails use the recipient's zone; for providers that's providers.timezone. */
+  private String emailTimezone(User user) {
+    if (user.getRole() == Role.PROVIDER) {
+      return providers
+          .findByUserId(user.getId())
+          .map(Provider::getTimezone)
+          .orElse(user.getTimezone());
+    }
+    return user.getTimezone();
   }
 
   private static DomainException invalidLink() {

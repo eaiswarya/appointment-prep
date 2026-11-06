@@ -8,8 +8,8 @@ import { admin, customer, problem, sessionExists } from '../../test/fixtures'
 import { server } from '../../test/msw'
 import { renderRoute } from '../../test/render'
 
-type ProviderDto = components['schemas']['ProviderDto']
-type Page = components['schemas']['PageResponseProviderDto']
+type ProviderDto = components['schemas']['AdminProviderDto']
+type Page = components['schemas']['PageResponseAdminProviderDto']
 
 const pending: ProviderDto = {
   id: '0190b7a0-0000-7000-8000-0000000000a1',
@@ -49,6 +49,16 @@ describe('AdminProvidersPage', () => {
     expect(items[1]).toHaveTextContent('Active')
   })
 
+  it('labels a deactivated provider as deactivated, not active', async () => {
+    server.use(...sessionExists(admin), listOf([{ ...accepted, active: false }]))
+
+    renderRoute('/admin/providers')
+
+    const list = await screen.findByRole('list', { name: /providers/i })
+    expect(within(list).getByRole('listitem')).toHaveTextContent('Deactivated')
+    expect(within(list).getByRole('listitem')).not.toHaveTextContent('Active')
+  })
+
   it('says so when there are no providers yet', async () => {
     server.use(...sessionExists(admin), listOf([]))
 
@@ -78,9 +88,9 @@ describe('AdminProvidersPage', () => {
     await user.type(screen.getByLabelText(/full name/i), 'Dr Meera Iyer')
     await user.type(screen.getByLabelText(/display name/i), 'Dr Iyer')
     await user.type(screen.getByLabelText(/email/i), 'iyer@example.com')
-    const zone = screen.getByLabelText(/time zone/i)
-    await user.clear(zone)
-    await user.type(zone, 'Asia/Kolkata')
+    // No default: the zone drives the provider's slots, so the admin must choose it.
+    expect(screen.getByLabelText(/time zone/i)).toHaveValue('')
+    await user.type(screen.getByLabelText(/time zone/i), 'Asia/Kolkata')
     await user.click(screen.getByRole('button', { name: /send invite/i }))
 
     expect(await screen.findByText(/invitation sent to iyer@example.com/i)).toBeInTheDocument()
@@ -108,6 +118,7 @@ describe('AdminProvidersPage', () => {
     await user.type(screen.getByLabelText(/full name/i), 'Someone')
     await user.type(screen.getByLabelText(/display name/i), 'Someone')
     await user.type(screen.getByLabelText(/email/i), 'taken@example.com')
+    await user.type(screen.getByLabelText(/time zone/i), 'UTC')
     await user.click(screen.getByRole('button', { name: /send invite/i }))
 
     const email = screen.getByLabelText(/email/i)

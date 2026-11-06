@@ -1,8 +1,8 @@
 package com.appointmentprep.admin;
 
 import com.appointmentprep.common.PageResponse;
+import com.appointmentprep.provider.AdminProviderDto;
 import com.appointmentprep.provider.InviteProviderRequest;
-import com.appointmentprep.provider.ProviderDto;
 import com.appointmentprep.provider.ProviderService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -32,13 +32,14 @@ public class AdminProvidersController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  public ProviderDto invite(@Valid @RequestBody InviteProviderRequest request) {
+  public AdminProviderDto inviteProvider(@Valid @RequestBody InviteProviderRequest request) {
     return providers.invite(request);
   }
 
   @GetMapping
-  public PageResponse<ProviderDto> list(
-      @RequestParam(defaultValue = "0") @Min(0) int page,
+  public PageResponse<AdminProviderDto> listProviders(
+      // Capped so page * size stays within the database offset (an int): no 500 on huge pages.
+      @RequestParam(defaultValue = "0") @Min(0) @Max(1_000_000) int page,
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
     return providers.list(page, size);
   }

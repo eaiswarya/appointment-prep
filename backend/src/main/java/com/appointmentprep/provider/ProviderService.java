@@ -44,7 +44,7 @@ public class ProviderService {
    * ACCOUNT_INVITE outbox row), all in one transaction.
    */
   @Transactional
-  public ProviderDto invite(InviteProviderRequest request) {
+  public AdminProviderDto invite(InviteProviderRequest request) {
     String email = request.email().trim();
     // Friendly pre-check; the case-insensitive unique constraint on users.email is the real guard.
     if (users.emailExists(email)) {
@@ -64,7 +64,7 @@ public class ProviderService {
     Provider provider = Provider.create(ids.next(), user.getId(), displayName, request.timezone());
     providers.save(provider);
     invites.sendInvite(user, provider.getTimezone());
-    return new ProviderDto(
+    return new AdminProviderDto(
         provider.getId(),
         user.getEmail(),
         user.getFullName(),
@@ -75,7 +75,7 @@ public class ProviderService {
   }
 
   @Transactional(readOnly = true)
-  public PageResponse<ProviderDto> list(int page, int size) {
+  public PageResponse<AdminProviderDto> list(int page, int size) {
     return PageResponse.of(providers.findAllForAdmin(PageRequest.of(page, size)));
   }
 

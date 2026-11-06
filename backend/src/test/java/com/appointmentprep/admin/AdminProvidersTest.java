@@ -3,6 +3,8 @@ package com.appointmentprep.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -13,6 +15,7 @@ import com.appointmentprep.TestcontainersConfiguration;
 import com.appointmentprep.auth.RegisterRequest;
 import com.appointmentprep.auth.RegistrationService;
 import com.appointmentprep.notification.EmailOutboxRepository;
+import com.appointmentprep.user.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
@@ -50,6 +53,8 @@ class AdminProvidersTest {
   @Autowired private ObjectMapper json;
 
   @MockitoSpyBean private EmailOutboxRepository outbox;
+
+  @MockitoSpyBean private UserRepository users;
 
   private String adminToken;
 
@@ -129,7 +134,8 @@ class AdminProvidersTest {
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     invite(accessToken(provider), uniqueEmail("y"), "Y", "Y", "UTC")
-        .andExpect(status().isForbidden());
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
   }
 
   @Test
@@ -155,8 +161,11 @@ class AdminProvidersTest {
   void theListShowsInvitePendingUntilAccepted() throws Exception {
     String pending = uniqueEmail("pending");
     String accepted = uniqueEmail("accepted");
-    invite(adminToken, pending, "Pending", "Pending", "UTC").andExpect(status().isCreated());
-    invite(adminToken, accepted, "Accepted", "Accepted", "UTC").andExpect(status().isCreated());
+    // Display names that sort first, so the shared test database can't push them off page 0.
+    invite(adminToken, pending, "Pending", "000 Pending " + UUID.randomUUID(), "UTC")
+        .andExpect(status().isCreated());
+    invite(adminToken, accepted, "Accepted", "000 Accepted " + UUID.randomUUID(), "UTC")
+        .andExpect(status().isCreated());
     // Accepting arrives in #28; simulate it by setting a password.
     jdbc.update(
         "UPDATE users SET password_hash = ? WHERE email = ?",
@@ -176,9 +185,33 @@ class AdminProvidersTest {
             .getContentAsString();
 
     JsonNode list = json.readTree(response);
-    assertThat(list.path("total").asInt()).isGreaterThanOrEqualTo(2);
+    assertThat(list.path("total").asLong())
+        .isEqualTo(jdbc.queryForObject("SELECT count(*) FROM providers", Long.class));
+    assertThat(list.path("items").get(0).path("displayName").asText()).startsWith("000 Accepted");
     assertThat(statusOf(list, pending)).isTrue();
     assertThat(statusOf(list, accepted)).isFalse();
+  }
+
+  @Test
+  void theDatabaseCatchesADuplicateThePreCheckMissed() throws Exception {
+    String email = uniqueEmail("race");
+    registration.register(new RegisterRequest(email, PASSWORD, "First", "UTC"));
+    doReturn(false).when(users).emailExists(anyString());
+
+    invite(adminToken, email, "Second", "Second", "UTC")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("EMAIL_TAKEN"));
+  }
+
+  @Test
+  void aHugePageNumberIsAValidationErrorNotA500() throws Exception {
+    mvc.perform(
+            get("/admin/providers")
+                .param("page", "100000000")
+                .param("size", "100")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errors[*].field").value(hasItem("page")));
   }
 
   @Test
@@ -269,7 +302,7 @@ class AdminProvidersTest {
         "INSERT INTO users (id, email, full_name, role, password_hash) VALUES (?, ?, ?, ?, ?)",
         UUID.randomUUID(),
         email,
-        role,
+        "Test " + role.toLowerCase(),
         role,
         passwordHash);
   }
