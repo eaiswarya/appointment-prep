@@ -1,5 +1,6 @@
 package com.appointmentprep.notification;
 
+import com.appointmentprep.auth.InviteIssued;
 import com.appointmentprep.auth.PasswordResetRequested;
 import com.appointmentprep.common.IdGenerator;
 import java.net.URLEncoder;
@@ -52,5 +53,23 @@ public class NotificationListener {
     outbox.save(
         EmailOutbox.pending(
             ids.next(), EmailTemplate.PASSWORD_RESET, event.email(), payload, clock.instant()));
+  }
+
+  @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
+  public void on(InviteIssued event) {
+    // Fragment, like reset links: the token never reaches a server log (§8.1).
+    String link =
+        baseUrl
+            + "/accept-invite#token="
+            + URLEncoder.encode(event.rawToken(), StandardCharsets.UTF_8);
+    Map<String, Object> payload =
+        Map.of(
+            "name", event.fullName(),
+            "inviteLink", link,
+            "expiresAt", event.expiresAt().toString(),
+            "timezone", event.timezone());
+    outbox.save(
+        EmailOutbox.pending(
+            ids.next(), EmailTemplate.ACCOUNT_INVITE, event.email(), payload, clock.instant()));
   }
 }

@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/admin/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list"];
+        put?: never;
+        post: operations["invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/forgot-password": {
         parameters: {
             query?: never;
@@ -124,6 +140,13 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        InviteProviderRequest: {
+            displayName: string;
+            /** Format: email */
+            email: string;
+            fullName: string;
+            timezone: string;
+        };
         LoginRequest: {
             email: string;
             password: string;
@@ -131,6 +154,25 @@ export interface components {
         LoginResponse: {
             accessToken: string;
             user: components["schemas"]["UserDto"];
+        };
+        PageResponseProviderDto: {
+            items: components["schemas"]["ProviderDto"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+        };
+        ProviderDto: {
+            active: boolean;
+            displayName: string;
+            email: string;
+            fullName: string;
+            /** Format: uuid */
+            id: string;
+            invitePending: boolean;
+            timezone: string;
         };
         RefreshResponse: {
             accessToken: string;
@@ -168,6 +210,53 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseProviderDto"];
+                };
+            };
+        };
+    };
+    invite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProviderDto"];
+                };
+            };
+        };
+    };
     forgotPassword: {
         parameters: {
             query?: never;

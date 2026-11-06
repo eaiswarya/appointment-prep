@@ -63,6 +63,12 @@ public class User implements Persistable<UUID> {
     return create(id, email, passwordHash, fullName, Role.CUSTOMER, timezone, now);
   }
 
+  /** An invited provider: no password until they accept the invite (FR-1). */
+  public static User newProvider(
+      UUID id, String email, String fullName, String timezone, Instant now) {
+    return create(id, email, null, fullName, Role.PROVIDER, timezone, now);
+  }
+
   /** The bootstrap admin (TECHNICAL_DESIGN §12.3); admins can't register themselves. */
   public static User newAdmin(
       UUID id, String email, String passwordHash, String fullName, String timezone, Instant now) {
