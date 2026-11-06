@@ -2,6 +2,7 @@ import { createBrowserRouter, type RouteObject } from 'react-router'
 import { RequireRole } from './auth/RequireRole'
 import { AppLayout } from './components/AppLayout'
 import { AdminHomePage } from './features/admin/AdminHomePage'
+import { AdminProvidersPage } from './features/admin/AdminProvidersPage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { LoginPage } from './features/auth/LoginPage'
 import { RegisterPage } from './features/auth/RegisterPage'
@@ -31,6 +32,14 @@ export const routes: RouteObject[] = [
         element: (
           <RequireRole role="ADMIN">
             <AdminHomePage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: '/admin/providers',
+        element: (
+          <RequireRole role="ADMIN">
+            <AdminProvidersPage />
           </RequireRole>
         ),
       },
