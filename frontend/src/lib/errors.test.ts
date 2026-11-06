@@ -17,7 +17,7 @@ describe('errorMessage', () => {
 
   it('covers every error code in TECHNICAL_DESIGN §9.3', () => {
     const designCodes = [
-      'VALIDATION_ERROR', 'INVALID_DURATION', 'RANGE_TOO_LARGE',
+      'VALIDATION_ERROR', 'INVALID_DURATION', 'RANGE_TOO_LARGE', 'INVALID_TOKEN',
       'UNAUTHENTICATED', 'TOKEN_EXPIRED',
       'FORBIDDEN',
       'NOT_FOUND',

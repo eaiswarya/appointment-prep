@@ -22,16 +22,19 @@ public class AuthController {
   private final LoginService login;
   private final RefreshTokenService refreshTokens;
   private final AuthCookies cookies;
+  private final PasswordResetService passwordReset;
 
   public AuthController(
       RegistrationService registration,
       LoginService login,
       RefreshTokenService refreshTokens,
-      AuthCookies cookies) {
+      AuthCookies cookies,
+      PasswordResetService passwordReset) {
     this.registration = registration;
     this.login = login;
     this.refreshTokens = refreshTokens;
     this.cookies = cookies;
+    this.passwordReset = passwordReset;
   }
 
   @PostMapping("/register")
@@ -67,5 +70,18 @@ public class AuthController {
     return ResponseEntity.noContent()
         .header(HttpHeaders.SET_COOKIE, cookies.cleared().toString())
         .build();
+  }
+
+  /** Always 202 with no body: whether the email exists is never revealed. */
+  @PostMapping("/forgot-password")
+  @ResponseStatus(HttpStatus.ACCEPTED)
+  public void forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+    passwordReset.requestReset(request.email());
+  }
+
+  @PostMapping("/reset-password")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+    passwordReset.resetPassword(request.token(), request.newPassword());
   }
 }

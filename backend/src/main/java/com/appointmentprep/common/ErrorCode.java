@@ -12,6 +12,7 @@ public enum ErrorCode {
   VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "The request is invalid"),
   INVALID_DURATION(HttpStatus.BAD_REQUEST, "Invalid duration"),
   RANGE_TOO_LARGE(HttpStatus.BAD_REQUEST, "Date range too large"),
+  INVALID_TOKEN(HttpStatus.BAD_REQUEST, "Invalid or expired link"),
   UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Authentication required"),
   TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Token expired"),
   FORBIDDEN(HttpStatus.FORBIDDEN, "Not allowed"),

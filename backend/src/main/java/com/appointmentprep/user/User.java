@@ -11,11 +11,15 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.DynamicUpdate;
 import org.springframework.data.domain.Persistable;
 
 /**
  * A person who can log in (table {@code users}). Never deleted; deactivated with {@code active}.
  */
+// Only changed columns are written, so concurrent edits of different fields (a profile save during
+// a password reset) can't overwrite each other with stale values.
+@DynamicUpdate
 @Entity
 @Table(name = "users")
 public class User implements Persistable<UUID> {
@@ -140,6 +144,12 @@ public class User implements Persistable<UUID> {
     if (changed) {
       this.updatedAt = now;
     }
+  }
+
+  /** Sets a new BCrypt hash (password reset, invite acceptance). */
+  public void changePassword(String passwordHash, Instant now) {
+    this.passwordHash = passwordHash;
+    this.updatedAt = now;
   }
 
   public boolean isActive() {

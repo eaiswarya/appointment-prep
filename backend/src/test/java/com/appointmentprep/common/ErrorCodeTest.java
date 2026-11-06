@@ -15,6 +15,7 @@ class ErrorCodeTest {
           Map.entry("VALIDATION_ERROR", 400),
           Map.entry("INVALID_DURATION", 400),
           Map.entry("RANGE_TOO_LARGE", 400),
+          Map.entry("INVALID_TOKEN", 400),
           Map.entry("UNAUTHENTICATED", 401),
           Map.entry("TOKEN_EXPIRED", 401),
           Map.entry("FORBIDDEN", 403),

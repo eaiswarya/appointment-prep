@@ -13,7 +13,9 @@ export function renderRoute(path: string, state?: unknown) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
-  const router = createMemoryRouter(routes, { initialEntries: [{ pathname: path, state }] })
+  // Split `path` so a query such as ?token=… reaches useSearchParams.
+  const { pathname, search, hash } = new URL(path, 'http://localhost')
+  const router = createMemoryRouter(routes, { initialEntries: [{ pathname, search, hash, state }] })
   // StrictMode as in main.tsx: effects run twice, which the session restore must survive
   // (one shared refresh, not two that would look like token reuse).
   render(
