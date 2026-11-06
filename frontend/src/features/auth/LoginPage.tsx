@@ -15,7 +15,12 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-type LocationState = { registered?: boolean; email?: string; from?: string } | null
+type LocationState = {
+  registered?: boolean
+  passwordReset?: boolean
+  email?: string
+  from?: string
+} | null
 
 export function LoginPage() {
   const state = useLocation().state as LocationState
@@ -59,6 +64,11 @@ export function LoginPage() {
           Your account is ready. You can log in now{state.email ? ` as ${state.email}` : ''}.
         </p>
       )}
+      {state?.passwordReset && (
+        <p role="status" className="mt-4 rounded border border-green-300 bg-green-50 p-3 text-sm text-green-900">
+          Your password has been changed. Log in with your new password.
+        </p>
+      )}
 
       <form noValidate className="mt-6 space-y-4" onSubmit={handleSubmit((values) => signIn.mutate(values))}>
         {errors.root && (
@@ -89,6 +99,11 @@ export function LoginPage() {
         >
           {signIn.isPending ? 'Logging in…' : 'Log in'}
         </button>
+        <p className="text-sm">
+          <Link to="/forgot-password" className="text-blue-700 underline">
+            Forgot your password?
+          </Link>
+        </p>
       </form>
 
       <p className="mt-6 text-sm text-gray-600">

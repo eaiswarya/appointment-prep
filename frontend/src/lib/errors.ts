@@ -5,6 +5,7 @@ export const ERROR_MESSAGES = {
   VALIDATION_ERROR: 'Some fields need attention. Check the highlighted fields and try again.',
   INVALID_DURATION: 'Durations must be between 5 and 480 minutes, in steps of 5.',
   RANGE_TOO_LARGE: 'That date range is too large. Choose a shorter range.',
+  INVALID_TOKEN: 'This link is invalid or has expired.',
   UNAUTHENTICATED: 'Please log in to continue.',
   TOKEN_EXPIRED: 'Your session has expired. Please log in again.',
   FORBIDDEN: "You don't have permission to do that.",
