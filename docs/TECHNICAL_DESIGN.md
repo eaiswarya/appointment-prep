@@ -499,10 +499,13 @@ Templates format times in the **recipient's** timezone (`users.timezone`, or `pr
 
 ### 8.3 Other controls
 
-- **Rate limits** (Bucket4j, per IP and per user):
-  - login: 5/min;
-  - forgot-password: 3/hour;
-  - `POST /api/bookings`: 10/min.
+- **Rate limits** (Bucket4j, in memory):
+  - login: 5/min per client IP;
+  - forgot-password: 3/hour per client IP;
+  - `POST /api/bookings`: 10/min per user.
+  - **Window.** Each limit is a fixed window that starts at the key's first request.
+  - **Over the limit:** 429 `RATE_LIMITED` with `Retry-After` in seconds. The buckets read the injected `Clock`.
+  - **Client IP:** the **last** `X-Forwarded-For` entry, which our Nginx appends. Earlier entries come from the client and are ignored. Without the header, the connection address is used. This relies on Nginx being the only way in (§3).
 - **Input validation.** Bean Validation on all DTOs, a 1 MB request size limit, and `customer_notes` stored as plain text (escaped when rendered).
 - **Headers.** Nginx sets CSP, `X-Content-Type-Options`, `Referrer-Policy`, and HSTS in production.
 - **Secrets.** The JWT key, DB password and SMTP credentials come from environment variables only. `.env` is git-ignored; `.env.example` is committed.

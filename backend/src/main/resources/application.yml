@@ -27,6 +27,9 @@ app:
     # Bootstrap admin, created on first start if no admin exists (§12.3). From the environment only.
     email: ${APP_ADMIN_EMAIL:}
     initial-password: ${APP_ADMIN_INITIAL_PASSWORD:}
+  rate-limit:
+    # Per-IP limits on login and forgot-password (TECHNICAL_DESIGN §8.3). Off only in tests.
+    enabled: true
 
 management:
   endpoints:

@@ -1,8 +1,12 @@
 package com.appointmentprep.auth;
 
+import com.appointmentprep.common.ClientIp;
+import com.appointmentprep.common.RateLimiter;
 import com.appointmentprep.user.UserDto;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.time.Duration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -18,12 +22,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth")
 public class AuthController {
 
+  // Per client IP (TECHNICAL_DESIGN §8.3).
+  static final RateLimiter.Limit LOGIN_LIMIT =
+      new RateLimiter.Limit("login", 5, Duration.ofMinutes(1));
+  static final RateLimiter.Limit FORGOT_PASSWORD_LIMIT =
+      new RateLimiter.Limit("forgot-password", 3, Duration.ofHours(1));
+
   private final RegistrationService registration;
   private final LoginService login;
   private final RefreshTokenService refreshTokens;
   private final AuthCookies cookies;
   private final PasswordResetService passwordReset;
   private final InviteService invites;
+  private final RateLimiter rateLimiter;
 
   public AuthController(
       RegistrationService registration,
@@ -31,13 +42,15 @@ public class AuthController {
       RefreshTokenService refreshTokens,
       AuthCookies cookies,
       PasswordResetService passwordReset,
-      InviteService invites) {
+      InviteService invites,
+      RateLimiter rateLimiter) {
     this.registration = registration;
     this.login = login;
     this.refreshTokens = refreshTokens;
     this.cookies = cookies;
     this.passwordReset = passwordReset;
     this.invites = invites;
+    this.rateLimiter = rateLimiter;
   }
 
   @PostMapping("/register")
@@ -47,7 +60,9 @@ public class AuthController {
   }
 
   @PostMapping("/login")
-  public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+  public ResponseEntity<LoginResponse> login(
+      @Valid @RequestBody LoginRequest request, HttpServletRequest http) {
+    rateLimiter.consume(LOGIN_LIMIT, ClientIp.of(http));
     LoginService.LoginResult result = login.login(request);
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, cookies.refresh(result.refreshToken()).toString())
@@ -78,7 +93,9 @@ public class AuthController {
   /** Always 202 with no body: whether the email exists is never revealed. */
   @PostMapping("/forgot-password")
   @ResponseStatus(HttpStatus.ACCEPTED)
-  public void forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+  public void forgotPassword(
+      @Valid @RequestBody ForgotPasswordRequest request, HttpServletRequest http) {
+    rateLimiter.consume(FORGOT_PASSWORD_LIMIT, ClientIp.of(http));
     passwordReset.requestReset(request.email());
   }
 
