@@ -16,7 +16,7 @@ test('forgot password shows one confirmation, whether or not the account exists'
 })
 
 test('an invalid reset link explains itself and offers a new one', async ({ page }) => {
-  await page.goto('/reset-password?token=not-a-real-token')
+  await page.goto('/reset-password#token=not-a-real-token')
   await page.getByLabel('New password', { exact: true }).fill('a-brand-new-passphrase')
   await page.getByLabel('Confirm new password').fill('a-brand-new-passphrase')
   await page.getByRole('button', { name: 'Set new password' }).click()

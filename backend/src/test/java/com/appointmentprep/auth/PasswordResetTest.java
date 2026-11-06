@@ -3,12 +3,16 @@ package com.appointmentprep.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.hasItem;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.appointmentprep.TestcontainersConfiguration;
+import com.appointmentprep.common.DomainException;
 import com.appointmentprep.common.MutableClock;
+import com.appointmentprep.notification.EmailOutboxRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
@@ -19,6 +23,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +38,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.convention.TestBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
@@ -59,6 +69,8 @@ class PasswordResetTest {
 
   @Autowired private ObjectMapper json;
 
+  @MockitoSpyBean private EmailOutboxRepository outbox;
+
   static Clock clock() {
     return CLOCK;
   }
@@ -87,7 +99,8 @@ class PasswordResetTest {
     assertThat(row.get("status")).isEqualTo("PENDING");
     JsonNode payload = json.readTree(row.get("payload").toString());
     assertThat(payload.path("resetLink").asText())
-        .startsWith("https://app.example.test/reset-password?token=");
+        // In the fragment, never the query: fragments never reach a server or its access log.
+        .startsWith("https://app.example.test/reset-password#token=");
     assertThat(payload.path("expiresAt").asText())
         .isEqualTo(T0.plus(Duration.ofHours(1)).toString());
     assertThat(payload.path("timezone").asText()).isEqualTo("Asia/Kolkata");
@@ -193,6 +206,80 @@ class PasswordResetTest {
     assertThat(resetTokens(email)).isZero();
   }
 
+  @Test
+  void aFailedOutboxWriteRollsBackTheToken() throws Exception {
+    // The outbox row and the token commit together or not at all (BEFORE_COMMIT, same transaction).
+    String email = registerCustomer();
+    doThrow(new IllegalStateException("outbox unavailable")).when(outbox).save(any());
+
+    forgot(email).andExpect(status().isInternalServerError());
+
+    assertThat(resetTokens(email)).isZero();
+    assertThat(outboxRows(email)).isEmpty();
+  }
+
+  @Test
+  void inactiveAndInvitedAccountsGetNoLink() throws Exception {
+    String inactive = registerCustomer();
+    jdbc.update("UPDATE users SET active = false WHERE email = ?", inactive);
+    String invited = "invited-" + UUID.randomUUID() + "@example.com";
+    jdbc.update(
+        "INSERT INTO users (id, email, full_name, role) VALUES (?, ?, 'Invited', 'PROVIDER')",
+        UUID.randomUUID(),
+        invited);
+
+    forgot(inactive).andExpect(status().isAccepted());
+    forgot(invited).andExpect(status().isAccepted());
+
+    assertThat(outboxRows(inactive)).isEmpty();
+    assertThat(outboxRows(invited)).isEmpty();
+    assertThat(resetTokens(inactive)).isZero();
+    assertThat(resetTokens(invited)).isZero();
+  }
+
+  @Test
+  void aUserDeactivatedAfterTheLinkWasSentCannotUseIt() throws Exception {
+    String email = registerCustomer();
+    forgot(email);
+    String token = tokenFromOutbox(email);
+    jdbc.update("UPDATE users SET active = false WHERE email = ?", email);
+
+    reset(token, NEW_PASSWORD).andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+  }
+
+  @Test
+  void aLinkCanBeRedeemedOnlyOnceEvenConcurrently() throws Exception {
+    String email = registerCustomer();
+    forgot(email);
+    String token = tokenFromOutbox(email);
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    try {
+      List<Future<String>> runs =
+          List.of(
+              pool.submit(() -> redeemAfter(start, token, "first-new-passphrase")),
+              pool.submit(() -> redeemAfter(start, token, "second-new-passphrase")));
+      start.countDown();
+      List<String> outcomes =
+          List.of(runs.get(0).get(30, TimeUnit.SECONDS), runs.get(1).get(30, TimeUnit.SECONDS));
+
+      assertThat(outcomes).containsExactlyInAnyOrder("OK", "INVALID_TOKEN");
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  private String redeemAfter(CountDownLatch start, String token, String password)
+      throws InterruptedException {
+    start.await();
+    try {
+      passwordReset.resetPassword(token, password);
+      return "OK";
+    } catch (DomainException e) {
+      return e.code().name();
+    }
+  }
+
   private ResultActions forgot(String email) throws Exception {
     return mvc.perform(
         post("/auth/forgot-password")
@@ -252,6 +339,6 @@ class PasswordResetTest {
         json.readTree(rows.get(rows.size() - 1).get("payload").toString())
             .path("resetLink")
             .asText();
-    return link.substring(link.indexOf("token=") + "token=".length());
+    return link.substring(link.indexOf("#token=") + "#token=".length());
   }
 }

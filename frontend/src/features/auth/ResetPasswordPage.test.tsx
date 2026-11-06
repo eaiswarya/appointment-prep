@@ -23,7 +23,9 @@ describe('ResetPasswordPage', () => {
         return new HttpResponse(null, { status: 204 })
       }),
     )
-    const { router } = renderRoute('/reset-password?token=abc123')
+    const { router } = renderRoute('/reset-password#token=abc123')
+    // The token is read, then removed from the address bar.
+    await waitFor(() => expect(router.state.location.hash).toBe(''))
 
     await setPassword()
 
@@ -34,12 +36,13 @@ describe('ResetPasswordPage', () => {
 
   it('shows INVALID_TOKEN and offers a new link', async () => {
     server.use(http.post('*/api/auth/reset-password', () => problem(400, { code: 'INVALID_TOKEN' })))
-    const { router } = renderRoute('/reset-password?token=used-or-expired')
+    const { router } = renderRoute('/reset-password#token=used-or-expired')
     const user = userEvent.setup()
 
     await setPassword()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(ERROR_MESSAGES.INVALID_TOKEN)
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveFocus())
     await user.click(screen.getByRole('link', { name: /request a new link/i }))
     expect(router.state.location.pathname).toBe('/forgot-password')
   })
@@ -61,7 +64,7 @@ describe('ResetPasswordPage', () => {
         }),
       ),
     )
-    renderRoute('/reset-password?token=abc123')
+    renderRoute('/reset-password#token=abc123')
 
     await setPassword('password1x', 'password1x')
 
@@ -71,7 +74,7 @@ describe('ResetPasswordPage', () => {
   })
 
   it('checks that both passwords match before sending', async () => {
-    renderRoute('/reset-password?token=abc123')
+    renderRoute('/reset-password#token=abc123')
 
     await setPassword('a-brand-new-passphrase', 'something-else-entirely')
 

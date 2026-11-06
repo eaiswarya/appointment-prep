@@ -39,7 +39,9 @@ public class NotificationListener {
   public void on(PasswordResetRequested event) {
     String link =
         baseUrl
-            + "/reset-password?token="
+            // The token goes in the fragment, not the query: browsers never send fragments to a
+            // server, so it can't end up in Nginx access logs or Referer headers.
+            + "/reset-password#token="
             + URLEncoder.encode(event.rawToken(), StandardCharsets.UTF_8);
     Map<String, Object> payload =
         Map.of(

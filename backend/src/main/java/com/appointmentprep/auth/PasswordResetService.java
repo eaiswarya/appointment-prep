@@ -12,6 +12,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.util.Assert;
 
 /** Forgot / reset password (FR-3; TECHNICAL_DESIGN §8.1). */
 @Service
@@ -59,6 +61,10 @@ public class PasswordResetService {
   }
 
   private void issueLink(User user) {
+    // The outbox listener only runs inside a transaction; without one the email would be dropped.
+    Assert.state(
+        TransactionSynchronizationManager.isActualTransactionActive(),
+        "A reset link must be issued inside a transaction");
     Instant now = clock.instant();
     tokens.retireUnused(user.getId(), UserToken.Type.PASSWORD_RESET, now);
     String raw = OpaqueTokens.generate();

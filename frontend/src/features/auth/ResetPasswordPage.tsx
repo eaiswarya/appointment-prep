@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { api } from '../../api/client'
 import { FormField } from '../../components/FormField'
@@ -21,11 +21,28 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>
 
-/** /reset-password?token=… from the emailed link (FR-3). */
+/** /reset-password#token=… from the emailed link (FR-3). */
 export function ResetPasswordPage() {
-  const token = useSearchParams()[0].get('token')
+  const location = useLocation()
   const navigate = useNavigate()
+  // The token arrives in the fragment (#token=…), which never reaches a server or its logs (§8.1).
+  const [token] = useState(() => new URLSearchParams(location.hash.slice(1)).get('token'))
   const [linkInvalid, setLinkInvalid] = useState(!token)
+  const alertRef = useRef<HTMLDivElement>(null)
+
+  // Drop the token from the address bar, so it isn't left in history or shared by copy-paste.
+  useEffect(() => {
+    if (location.hash) {
+      navigate(location.pathname, { replace: true })
+    }
+  }, [location.hash, location.pathname, navigate])
+
+  // When the link turns out to be invalid, move focus to the explanation (the form disappears).
+  useEffect(() => {
+    if (linkInvalid) {
+      alertRef.current?.focus()
+    }
+  }, [linkInvalid])
   const {
     register,
     handleSubmit,
@@ -64,7 +81,12 @@ export function ResetPasswordPage() {
       <h1 className="text-2xl font-semibold">Choose a new password</h1>
 
       {linkInvalid ? (
-        <div role="alert" className="mt-6 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+        <div
+          ref={alertRef}
+          tabIndex={-1}
+          role="alert"
+          className="mt-6 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800 focus:outline-none"
+        >
           <p>{errorMessage('INVALID_TOKEN')}</p>
           <p className="mt-2">
             <Link to="/forgot-password" className="font-medium text-blue-700 underline">
