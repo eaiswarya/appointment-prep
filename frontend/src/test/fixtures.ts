@@ -21,6 +21,14 @@ export const admin: UserDto = {
   timezone: 'UTC',
 }
 
+export const provider: UserDto = {
+  id: '0190b7a0-0000-7000-8000-000000000005',
+  email: 'iyer@example.com',
+  fullName: 'Dr Meera Iyer',
+  role: 'PROVIDER',
+  timezone: 'Asia/Kolkata',
+}
+
 export function problem(status: number, body: Record<string, unknown>) {
   return HttpResponse.json(
     { type: 'about:blank', status, ...body },

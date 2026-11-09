@@ -43,6 +43,11 @@ export function AppLayout() {
           {status === 'ready' &&
             (user ? (
               <div className="flex items-center gap-4 text-sm">
+                {user.role === 'PROVIDER' && (
+                  <Link to="/provider" className="whitespace-nowrap text-blue-700 underline">
+                    Provider area
+                  </Link>
+                )}
                 <p className="min-w-0">
                   <span className="sr-only">Signed in as </span>
                   <Link to="/profile" title="Your profile" className="inline-block max-w-[12rem] truncate align-bottom font-medium text-blue-700 underline">
