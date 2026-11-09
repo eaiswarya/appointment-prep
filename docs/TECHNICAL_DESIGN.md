@@ -546,7 +546,7 @@ Base path `/api`, set as the servlet context path, so Actuator (`/api/actuator/h
 | `PUT /provider/services` | Provider | `{serviceIds[]}` | 200 |
 | `GET /provider/bookings` | Provider | `?from=&to=` | 200 `BookingDto[]` |
 | `GET/POST/PATCH /admin/providers` | Admin | create sends invite | 200/201 |
-| `GET/POST/PATCH /admin/services` | Admin | `{name, description?, durationMinutes}`; PATCH: any of these + `active` (deactivate, never delete) | 200 page / 201 / 200 |
+| `GET/POST/PATCH /admin/services` | Admin | `{name (≤ 120), description? (≤ 2000), durationMinutes}`; PATCH: any of these + `active` (deactivate, never delete) | 200 page / 201 / 200 |
 | `GET /admin/bookings` | Admin | `?providerId=&customerId=&status=&from=&to=` | 200 page |
 | `GET/PUT /admin/settings` | Admin | `{key: value}` map | 200 |
 | `GET /admin/emails/failed` · `POST /{id}/retry` | Admin | — | 200 / 202 |

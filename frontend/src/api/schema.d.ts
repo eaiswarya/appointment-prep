@@ -187,7 +187,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listServices_1"];
+        get: operations["listActiveServices"];
         put?: never;
         post?: never;
         delete?: never;
@@ -629,7 +629,7 @@ export interface operations {
             };
         };
     };
-    listServices_1: {
+    listActiveServices: {
         parameters: {
             query?: never;
             header?: never;

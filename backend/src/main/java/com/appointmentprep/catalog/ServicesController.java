@@ -18,7 +18,7 @@ public class ServicesController {
 
   /** Active services, sorted by name. */
   @GetMapping
-  public List<ServiceDto> listServices() {
+  public List<ServiceDto> listActiveServices() {
     return catalog.listActive();
   }
 }

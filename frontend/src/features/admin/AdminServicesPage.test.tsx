@@ -160,6 +160,8 @@ describe('AdminServicesPage', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Edit Initial consultation' }))
     const form = screen.getByRole('form', { name: /edit initial consultation/i })
+    // Focus moves into the form that replaced the Edit button.
+    await waitFor(() => expect(within(form).getByLabelText('Name')).toHaveFocus())
     const duration = within(form).getByLabelText(/duration/i)
     expect(duration).toHaveValue(30)
     await user.clear(duration)
@@ -172,6 +174,7 @@ describe('AdminServicesPage', () => {
       body: { name: 'Initial consultation', durationMinutes: 45, description: 'First visit' },
     })
     expect(await screen.findByText('45 min')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit Initial consultation' })).toHaveFocus()
   })
 
   it('cancels an edit without saving', async () => {

@@ -8,10 +8,7 @@ import jakarta.validation.constraints.Size;
  * description clears it.
  */
 public record UpdateServiceRequest(
-    @Size(max = 120)
-        @Pattern(
-            regexp = "(?s)(?=.*\\S)[^\\p{Cntrl}]*",
-            message = "must not be blank or contain control characters")
+    @Size(max = 120) @Pattern(regexp = ServiceNames.PATTERN, message = ServiceNames.MESSAGE)
         String name,
     @Size(max = 2000) String description,
     Integer durationMinutes,

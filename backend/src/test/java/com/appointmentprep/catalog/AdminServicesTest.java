@@ -12,7 +12,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.appointmentprep.TestcontainersConfiguration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -93,7 +95,8 @@ class AdminServicesTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"", "   ", "x"})
+  // U+3000 and U+2003 are Unicode spaces that String.trim() (and so @NotBlank) doesn't see.
+  @ValueSource(strings = {"", "   ", "　", "  ", "x"})
   void invalidNameIsAValidationError(String name) throws Exception {
     String value = name.equals("x") ? "x".repeat(121) : name;
 
@@ -160,9 +163,11 @@ class AdminServicesTest {
     update(id, Map.of("durationMinutes", 12))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("INVALID_DURATION"));
-    update(id, Map.of("name", " "))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.errors[*].field").value(hasItem("name")));
+    for (String blank : new String[] {" ", "　"}) {
+      update(id, Map.of("name", blank))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.errors[*].field").value(hasItem("name")));
+    }
 
     adminList()
         .andExpect(jsonPath("$.items[?(@.id == '" + id + "')].durationMinutes").value(hasItem(10)));
@@ -193,34 +198,70 @@ class AdminServicesTest {
           .andExpect(status().isForbidden());
     }
     mvc.perform(get("/admin/services")).andExpect(status().isUnauthorized());
+    mvc.perform(
+            post("/admin/services")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("name", "X", "durationMinutes", 30))))
+        .andExpect(status().isUnauthorized());
+    mvc.perform(
+            patch("/admin/services/" + id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"active\":false}"))
+        .andExpect(status().isUnauthorized());
   }
 
   @Test
-  void adminListIsPaginatedAndSortedByName() throws Exception {
-    String prefix = "zz-sort-" + UUID.randomUUID();
-    createdId(prefix + " b", 30);
-    createdId(prefix + " a", 30);
+  void listsAreSortedByNameIgnoringCase() throws Exception {
+    String prefix = "Sort-" + UUID.randomUUID().toString().substring(0, 8);
+    String b = createdId(prefix + " Beta", 30);
+    String a = createdId(prefix + " alpha", 30);
 
-    JsonNode page =
-        json.readTree(
-            mvc.perform(
-                    withToken(get("/admin/services"), adminToken)
-                        .param("page", "0")
-                        .param("size", "100"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.size").value(100))
-                .andExpect(jsonPath("$.total").isNumber())
-                .andReturn()
-                .getResponse()
-                .getContentAsString());
-    String previous = "";
-    for (JsonNode item : page.path("items")) {
-      String name = item.path("name").asText().toLowerCase();
-      assertThat(name).isGreaterThanOrEqualTo(previous);
-      previous = name;
-    }
+    List<String> admin = ids(adminList().andReturn().getResponse().getContentAsString(), "items");
+    assertThat(admin.indexOf(a)).isNotNegative().isLessThan(admin.indexOf(b));
+    List<String> pub =
+        ids(mvc.perform(get("/services")).andReturn().getResponse().getContentAsString(), "");
+    assertThat(pub.indexOf(a)).isNotNegative().isLessThan(pub.indexOf(b));
+  }
+
+  @Test
+  void adminListIsPaginated() throws Exception {
+    createdId(uniqueName("Page one"), 30);
+    createdId(uniqueName("Page two"), 30);
+
+    JsonNode first = page(0, 1);
+    JsonNode second = page(1, 1);
+
+    assertThat(first.path("items")).hasSize(1);
+    assertThat(second.path("items")).hasSize(1);
+    assertThat(second.path("page").asInt()).isEqualTo(1);
+    assertThat(second.path("total").asLong())
+        .isEqualTo(first.path("total").asLong())
+        .isGreaterThanOrEqualTo(2);
+    assertThat(second.path("items").get(0).path("id"))
+        .isNotEqualTo(first.path("items").get(0).path("id"));
     mvc.perform(withToken(get("/admin/services"), adminToken).param("size", "101"))
         .andExpect(status().isBadRequest());
+  }
+
+  private JsonNode page(int page, int size) throws Exception {
+    return json.readTree(
+        mvc.perform(
+                withToken(get("/admin/services"), adminToken)
+                    .param("page", String.valueOf(page))
+                    .param("size", String.valueOf(size)))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString());
+  }
+
+  /** The ids in order, from a page's {@code items} or (with an empty field) a bare array. */
+  private List<String> ids(String body, String field) throws Exception {
+    JsonNode root = json.readTree(body);
+    JsonNode array = field.isEmpty() ? root : root.path(field);
+    List<String> ids = new ArrayList<>();
+    array.forEach(item -> ids.add(item.path("id").asText()));
+    return ids;
   }
 
   private ResultActions create(Map<String, Object> body) throws Exception {

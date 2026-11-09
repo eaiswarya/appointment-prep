@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { FormField } from '../../components/FormField'
@@ -36,8 +37,17 @@ export function ServiceForm({ id, label, initial, submitLabel, pendingLabel, onS
     handleSubmit,
     setError,
     reset,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<ServiceValues>({ resolver: zodResolver(schema), defaultValues: initial ?? EMPTY })
+
+  // An edit form replaces the Edit button that had focus, so take focus over instead of losing it.
+  const editing = initial !== undefined
+  useEffect(() => {
+    if (editing) {
+      setFocus('name')
+    }
+  }, [editing, setFocus])
 
   function showProblem(problem: ApiProblem) {
     if (problem.code === 'INVALID_DURATION') {

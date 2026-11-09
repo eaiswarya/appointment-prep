@@ -12,7 +12,7 @@ import jakarta.validation.constraints.Size;
 public record CreateServiceRequest(
     @NotBlank
         @Size(max = 120)
-        @Pattern(regexp = "[^\\p{Cntrl}]*", message = "must not contain control characters")
+        @Pattern(regexp = ServiceNames.PATTERN, message = ServiceNames.MESSAGE)
         String name,
     @Size(max = 2000) String description,
     @NotNull Integer durationMinutes) {}
