@@ -82,4 +82,31 @@ public class Provider implements Persistable<UUID> {
   public boolean isActive() {
     return active;
   }
+
+  public String getBio() {
+    return bio;
+  }
+
+  public int getBufferMinutes() {
+    return bufferMinutes;
+  }
+
+  /**
+   * The provider's own edit (PATCH /provider/me); {@code null} leaves a field unchanged. The buffer
+   * only affects future bookings: each booking freezes it into {@code blocked_until} (§5.3).
+   */
+  void updateProfile(String displayName, String bio, String timezone, Integer bufferMinutes) {
+    if (displayName != null) {
+      this.displayName = displayName;
+    }
+    if (bio != null) {
+      this.bio = bio.isBlank() ? null : bio.strip();
+    }
+    if (timezone != null) {
+      this.timezone = timezone;
+    }
+    if (bufferMinutes != null) {
+      this.bufferMinutes = bufferMinutes;
+    }
+  }
 }
