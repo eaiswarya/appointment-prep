@@ -3,6 +3,7 @@ import { RequireRole } from './auth/RequireRole'
 import { AppLayout } from './components/AppLayout'
 import { AdminHomePage } from './features/admin/AdminHomePage'
 import { AdminProvidersPage } from './features/admin/AdminProvidersPage'
+import { AdminServicesPage } from './features/admin/AdminServicesPage'
 import { AcceptInvitePage } from './features/auth/AcceptInvitePage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { LoginPage } from './features/auth/LoginPage'
@@ -42,6 +43,14 @@ export const routes: RouteObject[] = [
         element: (
           <RequireRole role="ADMIN">
             <AdminProvidersPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: '/admin/services',
+        element: (
+          <RequireRole role="ADMIN">
+            <AdminServicesPage />
           </RequireRole>
         ),
       },
