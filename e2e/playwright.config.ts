@@ -3,6 +3,8 @@ import { defineConfig, devices } from '@playwright/test'
 /**
  * End-to-end tests against the running Docker Compose stack (TECHNICAL_DESIGN §11, §14).
  * Start it first: `docker compose up -d --build --wait`. Override the URL with E2E_BASE_URL.
+ * The stack's per-IP rate limits apply (TECHNICAL_DESIGN §8.3): forgot-password allows 3 per hour.
+ * Between local reruns, `docker compose restart backend` clears them.
  */
 export default defineConfig({
   testDir: './tests',

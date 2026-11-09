@@ -2,6 +2,8 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
+import { ERROR_MESSAGES } from '../../lib/errors'
+import { problem } from '../../test/fixtures'
 import { server } from '../../test/msw'
 import { renderRoute } from '../../test/render'
 
@@ -23,6 +25,18 @@ describe('ForgotPasswordPage', () => {
     expect(await screen.findByText(/if an account exists for asha@example.com/i)).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent(/expires in 1 hour/i)
     expect(sent).toEqual({ email: 'asha@example.com' })
+  })
+
+  it('says to wait when there have been too many requests', async () => {
+    server.use(http.post('*/api/auth/forgot-password', () => problem(429, { code: 'RATE_LIMITED' })))
+    renderRoute('/forgot-password')
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/email/i), 'asha@example.com')
+    await user.click(screen.getByRole('button', { name: /send reset link/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(ERROR_MESSAGES.RATE_LIMITED)
+    expect(screen.queryByText(/if an account exists/i)).not.toBeInTheDocument()
   })
 
   it('checks the email before sending anything', async () => {

@@ -51,7 +51,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   ResponseEntity<Object> handleDomain(DomainException ex, WebRequest request) {
     ProblemDetail body = ProblemDetail.forStatusAndDetail(ex.code().status(), ex.getMessage());
     withCode(body, ex.code());
-    return handleExceptionInternal(ex, body, new HttpHeaders(), ex.code().status(), request);
+    HttpHeaders headers = new HttpHeaders();
+    if (ex instanceof RateLimitedException limited) {
+      headers.set(HttpHeaders.RETRY_AFTER, Long.toString(limited.retryAfterSeconds()));
+    }
+    return handleExceptionInternal(ex, body, headers, ex.code().status(), request);
   }
 
   /** Bean Validation outside the controller boundary, e.g. in a {@code @Validated} service. */
