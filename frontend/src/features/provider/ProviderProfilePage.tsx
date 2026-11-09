@@ -70,12 +70,13 @@ function ProfileForm({ profile }: { profile: ProviderProfileDto }) {
     setError,
     reset,
     control,
-    formState: { errors, isDirty },
+    formState: { errors, isDirty, touchedFields },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: valuesOf(profile) })
   // Hide the confirmation as soon as there are unsaved edits again.
   const showSaved = saved && !isDirty
   const newZone = useWatch({ control, name: 'timezone' }).trim()
-  const zoneChanging = newZone !== '' && newZone !== profile.timezone
+  // Shown once the field is left, not for every half-typed zone.
+  const zoneChanging = touchedFields.timezone === true && newZone !== '' && newZone !== profile.timezone
 
   const save = useMutation({
     mutationFn: async (body: FormValues) => {
@@ -162,12 +163,13 @@ function ProfileForm({ profile }: { profile: ProviderProfileDto }) {
         include={profile.timezone}
         hint="Where you work. Your weekly hours and slots use this zone."
         error={errors.timezone?.message}
+        describedBy={zoneChanging ? 'timezone-change' : undefined}
         {...register('timezone')}
       />
       {zoneChanging && (
-        <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+        <p id="timezone-change" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           Your weekly hours keep the same local times in {newZone}. For example, 09:00 stays 09:00 there, which
-          is a different moment than 09:00 in {profile.timezone}.
+          is a different moment than 09:00 in {profile.timezone}. Existing bookings keep their times.
         </p>
       )}
       <FormField

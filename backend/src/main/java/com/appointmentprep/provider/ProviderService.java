@@ -81,7 +81,11 @@ public class ProviderService {
     return PageResponse.of(providers.findAllForAdmin(PageRequest.of(page, size)));
   }
 
-  /** The calling provider's profile, found by their user id (the JWT subject). */
+  /**
+   * The calling provider's profile, found by their user id (the JWT subject). A deactivated
+   * provider can still read it (shown read-only); only {@link #updateProfile} requires an active
+   * provider.
+   */
   @Transactional(readOnly = true)
   public ProviderProfileDto getProfile(UUID userId) {
     return ProviderProfileDto.of(

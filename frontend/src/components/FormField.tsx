@@ -5,13 +5,15 @@ type Props = ComponentPropsWithRef<'input'> & {
   label: string
   hint?: string
   error?: string
+  /** Ids of more text that describes the field, e.g. a warning shown next to it. */
+  describedBy?: string
 }
 
 /** A labelled input whose hint and error are announced with it (aria-describedby). */
-export function FormField({ id, label, hint, error, ...input }: Props) {
+export function FormField({ id, label, hint, error, describedBy: extra, ...input }: Props) {
   const hintId = hint ? `${id}-hint` : undefined
   const errorId = error ? `${id}-error` : undefined
-  const describedBy = [errorId, hintId].filter(Boolean).join(' ') || undefined
+  const describedBy = [errorId, hintId, extra].filter(Boolean).join(' ') || undefined
 
   return (
     <div>

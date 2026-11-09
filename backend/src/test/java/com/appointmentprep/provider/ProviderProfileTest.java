@@ -108,17 +108,46 @@ class ProviderProfileTest {
   void invalidTimezoneIsAValidationError() throws Exception {
     update(Map.of("timezone", "Mars/Olympus_Mons"))
         .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         .andExpect(jsonPath("$.errors[*].field").value(hasItem("timezone")));
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"", "  ", "　", "x"})
+  @ValueSource(strings = {"", "  ", "　", "DrIyer", "x"})
   void invalidDisplayNameIsAValidationError(String name) throws Exception {
     String value = name.equals("x") ? "x".repeat(121) : name;
 
     update(Map.of("displayName", value))
         .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         .andExpect(jsonPath("$.errors[*].field").value(hasItem("displayName")));
+  }
+
+  @Test
+  void anEmptyPatchChangesNothing() throws Exception {
+    update(Map.of())
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.displayName").value("Dr Iyer"))
+        .andExpect(jsonPath("$.timezone").value("Asia/Kolkata"))
+        .andExpect(jsonPath("$.bufferMinutes").value(0));
+  }
+
+  @Test
+  void aProviderOnlyEverChangesTheirOwnProfile() throws Exception {
+    String mine = providerToken;
+    String other = providerToken("Dr Shah", "Europe/London");
+
+    mvc.perform(
+            patch("/provider/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + mine)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"displayName\":\"Dr Meera Iyer\",\"bufferMinutes\":30}"))
+        .andExpect(status().isOk());
+
+    mvc.perform(get("/provider/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + other))
+        .andExpect(jsonPath("$.displayName").value("Dr Shah"))
+        .andExpect(jsonPath("$.timezone").value("Europe/London"))
+        .andExpect(jsonPath("$.bufferMinutes").value(0));
   }
 
   @Test
@@ -145,6 +174,10 @@ class ProviderProfileTest {
     jdbc.update("UPDATE providers SET active = false WHERE user_id = ?", providerUserId);
 
     update(Map.of("bufferMinutes", 30)).andExpect(status().isNotFound());
+    // Reading stays allowed: the profile is shown read-only rather than vanishing.
+    mvc.perform(get("/provider/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + providerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.bufferMinutes").value(0));
   }
 
   private UUID providerUserId;

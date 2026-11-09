@@ -74,8 +74,14 @@ describe('ProviderProfilePage', () => {
 
     await user.clear(zone)
     await user.type(zone, 'Europe/London')
+    // Not while typing (half-typed zones), only once the field is left.
+    expect(screen.queryByText(/same local times/i)).not.toBeInTheDocument()
+    await user.tab()
 
     expect(screen.getByText(/same local times/i)).toHaveTextContent('Europe/London')
+    expect(screen.getByText(/same local times/i)).toHaveTextContent(/existing bookings keep their times/i)
+    // Screen readers hear it with the field, not only sighted users.
+    expect(zone).toHaveAccessibleDescription(/same local times in Europe\/London/i)
   })
 
   it('says the buffer only affects new bookings', async () => {

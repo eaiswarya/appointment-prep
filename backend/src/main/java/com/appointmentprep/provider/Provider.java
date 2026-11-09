@@ -8,13 +8,18 @@ import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.util.UUID;
+import org.hibernate.annotations.DynamicUpdate;
 import org.springframework.data.domain.Persistable;
 
 /**
  * A provider's profile (table {@code providers}), one per PROVIDER user. Its time zone drives slot
  * expansion (TECHNICAL_DESIGN §6.1). Never deleted; deactivated with {@code active}.
+ *
+ * <p>{@code @DynamicUpdate}: an UPDATE writes only changed columns, so a profile edit running
+ * alongside an admin deactivation can't write {@code active} back to true.
  */
 @Entity
+@DynamicUpdate
 @Table(name = "providers")
 public class Provider implements Persistable<UUID> {
 

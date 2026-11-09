@@ -32,6 +32,9 @@ public @interface MultipleOf {
 
     @Override
     public void initialize(MultipleOf annotation) {
+      if (annotation.value() <= 0) {
+        throw new IllegalArgumentException("@MultipleOf needs a positive value");
+      }
       step = annotation.value();
     }
 
