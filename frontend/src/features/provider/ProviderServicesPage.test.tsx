@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { components } from '../../api/schema'
+import { ERROR_MESSAGES } from '../../lib/errors'
 import { problem, provider, sessionExists } from '../../test/fixtures'
 import { server } from '../../test/msw'
 import { renderRoute } from '../../test/render'
@@ -122,6 +123,73 @@ describe('ProviderServicesPage', () => {
     await waitFor(() =>
       expect(screen.queryByRole('checkbox', { name: /initial consultation/i })).not.toBeInTheDocument(),
     )
+  })
+
+  it('shows a reactivated service as offered again after a refresh, so saving keeps it', async () => {
+    // The provider offers both; consultation was deactivated, then reactivated while the page is open.
+    let gets = 0
+    let sent: unknown
+    server.use(
+      ...sessionExists(provider),
+      http.get('*/api/provider/services', () => {
+        gets += 1
+        return HttpResponse.json(
+          gets === 1
+            ? { offeredServiceIds: [followUp.id], available: [followUp] }
+            : { offeredServiceIds: [consultation.id, followUp.id], available: [consultation, followUp] },
+        )
+      }),
+      http.put('*/api/provider/services', async ({ request }) => {
+        sent = await request.json()
+        return HttpResponse.json({ offeredServiceIds: [consultation.id], available: [consultation, followUp] })
+      }),
+    )
+    renderRoute('/provider/services')
+    const user = userEvent.setup()
+    await screen.findByRole('checkbox', { name: /follow-up/i })
+
+    window.dispatchEvent(new Event('visibilitychange'))
+
+    expect(await screen.findByRole('checkbox', { name: /initial consultation/i })).toBeChecked()
+    await user.click(screen.getByRole('checkbox', { name: /follow-up/i }))
+    await user.click(screen.getByRole('button', { name: /save/i }))
+    expect(await screen.findByRole('status')).toHaveTextContent(/saved/i)
+    expect(sent).toEqual({ serviceIds: [consultation.id] })
+  })
+
+  it('shows other validation problems as they are, not as "no longer available"', async () => {
+    server.use(
+      ...sessionExists(provider),
+      servicesAre(() => ({ offeredServiceIds: [], available: [consultation] })),
+      http.put('*/api/provider/services', () =>
+        problem(400, {
+          code: 'VALIDATION_ERROR',
+          errors: [{ field: 'serviceIds', message: 'size must be between 0 and 200' }],
+        }),
+      ),
+    )
+    renderRoute('/provider/services')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('checkbox', { name: /initial consultation/i }))
+    await user.click(screen.getByRole('button', { name: /save/i }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).not.toHaveTextContent(/no longer available/i)
+    expect(alert).toHaveTextContent(ERROR_MESSAGES.VALIDATION_ERROR)
+    // The alert goes away once the provider changes their choice.
+    await user.click(screen.getByRole('checkbox', { name: /initial consultation/i }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('reads a service description once, as its description', async () => {
+    server.use(...sessionExists(provider), servicesAre(() => ({ offeredServiceIds: [], available: [consultation] })))
+
+    renderRoute('/provider/services')
+
+    const box = await screen.findByRole('checkbox', { name: /initial consultation/i })
+    expect(box).not.toHaveAccessibleName(/first visit/i)
+    expect(box).toHaveAccessibleDescription('First visit')
   })
 
   it('is linked from the provider area', async () => {

@@ -37,7 +37,9 @@ public class ProviderOfferingService {
 
   /**
    * Replaces the provider's set of active services. Every id must be an active service; otherwise
-   * nothing changes. The provider row is locked so concurrent saves can't interleave.
+   * nothing changes. The provider row is locked so concurrent saves can't interleave, and the
+   * services involved (requested and already linked) are share-locked, so an admin can't
+   * (de)activate one between the check and the write.
    */
   @Transactional
   public ProviderServicesDto replace(UUID userId, UpdateProviderServicesRequest request) {
@@ -47,7 +49,8 @@ public class ProviderOfferingService {
             .filter(Provider::isActive)
             .orElseThrow(ProviderOfferingService::notFound);
     Set<UUID> ids = new LinkedHashSet<>(request.serviceIds());
-    List<CatalogItem> chosen = services.findAllById(ids);
+    services.lockOfferedBy(provider.getId());
+    List<CatalogItem> chosen = ids.isEmpty() ? List.of() : services.findAllByIdForShare(ids);
     if (chosen.size() != ids.size() || !chosen.stream().allMatch(CatalogItem::isActive)) {
       throw new FieldValidationException(
           "serviceIds", "must only contain services that exist and are active");

@@ -82,8 +82,8 @@ backend/src/main/java/com/appointmentprep/
 ├── config/          # security, JWT, OpenAPI, scheduling, CORS
 ├── auth/            # register, login, refresh, password reset, invites
 ├── user/            # User entity, profile endpoints
-├── provider/        # Provider profile, availability rules, time off
-├── catalog/         # ServiceOffering (the "Service" concept) + provider_services
+├── provider/        # Provider profile, services offered (provider_services), availability rules, time off
+├── catalog/         # CatalogItem (the "Service" concept): the service catalog
 ├── slot/            # SlotService — computes free slots (no persistence)
 ├── booking/         # Booking aggregate, conflict checks, state machine, events
 ├── notification/    # Outbox, dispatcher, templates, ICS builder, reminder job
@@ -92,7 +92,7 @@ backend/src/main/java/com/appointmentprep/
 ```
 
 Conventions:
-- **Naming.** The product term "Service" is `ServiceOffering` in code, so it doesn't clash with Spring's `@Service`. The table name is still `services`.
+- **Naming.** The product term "Service" is `CatalogItem` in code (API: `ServiceDto`), so it doesn't clash with Spring's `@Service`. The table name is still `services`.
 - **Time.** Code reads the current time from an injected `java.time.Clock`. Never call `Instant.now()` directly, so tests can freeze time.
 - **DTOs.** Controllers accept and return Java `record` DTOs, never entities. Bean Validation (`@Valid`) runs on every request body.
 - **Transactions.** Service methods own transaction boundaries (`@Transactional`). Controllers stay thin.

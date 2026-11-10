@@ -46,10 +46,10 @@ class ProviderServicesTest {
 
   @Autowired private ObjectMapper json;
 
-  private Provider me;
+  private LoggedInProvider me;
 
   /** A logged-in provider: their user id, provider id and access token. */
-  private record Provider(UUID userId, UUID providerId, String token) {}
+  private record LoggedInProvider(UUID userId, UUID providerId, String token) {}
 
   @BeforeEach
   void logInAsProvider() throws Exception {
@@ -96,10 +96,21 @@ class ProviderServicesTest {
   void missingOrNullIdsAreAValidationError() throws Exception {
     send(me, "{}")
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.errors[*].field").value(hasItem("serviceIds")));
     send(me, "{\"serviceIds\":[null]}")
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  void tooManyIdsAreAValidationError() throws Exception {
+    String[] ids = new String[201];
+    Arrays.fill(ids, UUID.randomUUID().toString());
+
+    replace(me, ids)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errors[*].field").value(hasItem("serviceIds")));
   }
 
   @Test
@@ -114,7 +125,7 @@ class ProviderServicesTest {
 
   @Test
   void providersAreKeptApart() throws Exception {
-    Provider other = newProvider();
+    LoggedInProvider other = newProvider();
     String a = service("Consultation", true);
     String b = service("Follow-up", true);
     replace(other, a).andExpect(status().isOk());
@@ -159,6 +170,7 @@ class ProviderServicesTest {
     jdbc.update("UPDATE providers SET active = false WHERE id = ?", me.providerId());
 
     replace(me, service("Consultation", true)).andExpect(status().isNotFound());
+    offered(me).andExpect(status().isOk());
   }
 
   @Test
@@ -182,17 +194,17 @@ class ProviderServicesTest {
         .andExpect(status().isUnauthorized());
   }
 
-  private ResultActions offered(Provider provider) throws Exception {
+  private ResultActions offered(LoggedInProvider provider) throws Exception {
     return mvc.perform(
         get("/provider/services").header(HttpHeaders.AUTHORIZATION, "Bearer " + provider.token()));
   }
 
-  private ResultActions replace(Provider provider, String... ids) throws Exception {
+  private ResultActions replace(LoggedInProvider provider, String... ids) throws Exception {
     List<String> list = new ArrayList<>(Arrays.asList(ids));
     return send(provider, json.writeValueAsString(Map.of("serviceIds", list)));
   }
 
-  private ResultActions send(Provider provider, String body) throws Exception {
+  private ResultActions send(LoggedInProvider provider, String body) throws Exception {
     return mvc.perform(
         put("/provider/services")
             .header(HttpHeaders.AUTHORIZATION, "Bearer " + provider.token())
@@ -200,7 +212,7 @@ class ProviderServicesTest {
             .content(body));
   }
 
-  private int linkCount(Provider provider) {
+  private int linkCount(LoggedInProvider provider) {
     return jdbc.queryForObject(
         "SELECT count(*) FROM provider_services WHERE provider_id = ?",
         Integer.class,
@@ -217,7 +229,7 @@ class ProviderServicesTest {
     return id.toString();
   }
 
-  private Provider newProvider() throws Exception {
+  private LoggedInProvider newProvider() throws Exception {
     UUID userId = UUID.randomUUID();
     UUID providerId = UUID.randomUUID();
     String email = insertUser(userId, "PROVIDER");
@@ -225,7 +237,7 @@ class ProviderServicesTest {
         "INSERT INTO providers (id, user_id, display_name, timezone) VALUES (?, ?, 'Dr Test', 'UTC')",
         providerId,
         userId);
-    return new Provider(userId, providerId, login(email));
+    return new LoggedInProvider(userId, providerId, login(email));
   }
 
   private String insertUser(UUID id, String role) {
