@@ -6,6 +6,7 @@ import { AdminProvidersPage } from './features/admin/AdminProvidersPage'
 import { AdminServicesPage } from './features/admin/AdminServicesPage'
 import { ProviderHomePage } from './features/provider/ProviderHomePage'
 import { ProviderProfilePage } from './features/provider/ProviderProfilePage'
+import { ProviderServicesPage } from './features/provider/ProviderServicesPage'
 import { AcceptInvitePage } from './features/auth/AcceptInvitePage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { LoginPage } from './features/auth/LoginPage'
@@ -61,6 +62,14 @@ export const routes: RouteObject[] = [
         element: (
           <RequireRole role="PROVIDER">
             <ProviderProfilePage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: '/provider/services',
+        element: (
+          <RequireRole role="PROVIDER">
+            <ProviderServicesPage />
           </RequireRole>
         ),
       },

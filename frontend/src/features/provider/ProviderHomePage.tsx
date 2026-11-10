@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 
-/** The provider area's start page. Services, weekly hours and time off are added in M2. */
+/** The provider area's start page. Weekly hours and time off are added in M2. */
 export function ProviderHomePage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -11,6 +11,12 @@ export function ProviderHomePage() {
             Profile
           </Link>
           <span className="text-gray-600"> — your display name, bio, time zone and buffer</span>
+        </li>
+        <li>
+          <Link to="/provider/services" className="font-medium text-blue-700 underline">
+            Services
+          </Link>
+          <span className="text-gray-600"> — the services customers can book you for</span>
         </li>
       </ul>
     </main>
