@@ -4,6 +4,8 @@ import { AppLayout } from './components/AppLayout'
 import { AdminHomePage } from './features/admin/AdminHomePage'
 import { AdminProvidersPage } from './features/admin/AdminProvidersPage'
 import { AdminServicesPage } from './features/admin/AdminServicesPage'
+import { ProviderHomePage } from './features/provider/ProviderHomePage'
+import { ProviderProfilePage } from './features/provider/ProviderProfilePage'
 import { AcceptInvitePage } from './features/auth/AcceptInvitePage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { LoginPage } from './features/auth/LoginPage'
@@ -43,6 +45,22 @@ export const routes: RouteObject[] = [
         element: (
           <RequireRole role="ADMIN">
             <AdminProvidersPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: '/provider',
+        element: (
+          <RequireRole role="PROVIDER">
+            <ProviderHomePage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: '/provider/profile',
+        element: (
+          <RequireRole role="PROVIDER">
+            <ProviderProfilePage />
           </RequireRole>
         ),
       },

@@ -8,13 +8,18 @@ import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.util.UUID;
+import org.hibernate.annotations.DynamicUpdate;
 import org.springframework.data.domain.Persistable;
 
 /**
  * A provider's profile (table {@code providers}), one per PROVIDER user. Its time zone drives slot
  * expansion (TECHNICAL_DESIGN §6.1). Never deleted; deactivated with {@code active}.
+ *
+ * <p>{@code @DynamicUpdate}: an UPDATE writes only changed columns, so a profile edit running
+ * alongside an admin deactivation can't write {@code active} back to true.
  */
 @Entity
+@DynamicUpdate
 @Table(name = "providers")
 public class Provider implements Persistable<UUID> {
 
@@ -81,5 +86,32 @@ public class Provider implements Persistable<UUID> {
 
   public boolean isActive() {
     return active;
+  }
+
+  public String getBio() {
+    return bio;
+  }
+
+  public int getBufferMinutes() {
+    return bufferMinutes;
+  }
+
+  /**
+   * The provider's own edit (PATCH /provider/me); {@code null} leaves a field unchanged. The buffer
+   * only affects future bookings: each booking freezes it into {@code blocked_until} (§5.3).
+   */
+  void updateProfile(String displayName, String bio, String timezone, Integer bufferMinutes) {
+    if (displayName != null) {
+      this.displayName = displayName;
+    }
+    if (bio != null) {
+      this.bio = bio.isBlank() ? null : bio.strip();
+    }
+    if (timezone != null) {
+      this.timezone = timezone;
+    }
+    if (bufferMinutes != null) {
+      this.bufferMinutes = bufferMinutes;
+    }
   }
 }

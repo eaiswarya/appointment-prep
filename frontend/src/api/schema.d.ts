@@ -180,6 +180,22 @@ export interface paths {
         patch: operations["updateMe"];
         trace?: never;
     };
+    "/provider/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getProviderProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateProviderProfile"];
+        trace?: never;
+    };
     "/services": {
         parameters: {
             query?: never;
@@ -257,6 +273,14 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        ProviderProfileDto: {
+            bio?: string;
+            /** Format: int32 */
+            bufferMinutes: number;
+            displayName: string;
+            /** @description IANA zone; weekly hours are in this zone */
+            timezone: string;
+        };
         RefreshResponse: {
             accessToken: string;
         };
@@ -282,6 +306,13 @@ export interface components {
         };
         UpdateProfileRequest: {
             fullName?: string;
+            timezone?: string;
+        };
+        UpdateProviderProfileRequest: {
+            bio?: string;
+            /** Format: int32 */
+            bufferMinutes?: number;
+            displayName?: string;
             timezone?: string;
         };
         UpdateServiceRequest: {
@@ -625,6 +656,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UserDto"];
+                };
+            };
+        };
+    };
+    getProviderProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProviderProfileDto"];
+                };
+            };
+        };
+    };
+    updateProviderProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProviderProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProviderProfileDto"];
                 };
             };
         };

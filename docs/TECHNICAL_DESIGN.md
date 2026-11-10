@@ -540,7 +540,7 @@ Base path `/api`, set as the servlet context path, so Actuator (`/api/actuator/h
 | `POST /bookings/{id}/cancel` | Owner/Provider/Admin | `{reason?}` (required for provider/admin) | 200 |
 | `POST /bookings/{id}/reschedule` | Customer (owner) | `{startAt}` | 201 new `BookingDto` |
 | `PATCH /bookings/{id}/status` | Provider | `{status: COMPLETED\|NO_SHOW}` | 200 |
-| `GET /provider/me` · `PATCH /provider/me` | Provider | `{bio, timezone, bufferMinutes}` | 200 |
+| `GET /provider/me` · `PATCH /provider/me` | Provider | `{displayName, bio, timezone, bufferMinutes}` (PATCH: any of these; buffer 0–120 in steps of 5) | 200 |
 | `GET /provider/availability` · `PUT` | Provider | `{rules:[{dayOfWeek,startTime,endTime}]}` (full replace) | 200 + `{affectedBookings[]}` (FR-9) |
 | `GET /provider/time-off` · `POST` · `DELETE /{id}` | Provider | `{startAt, endAt, reason?}` | 201 + `{affectedBookings[]}` |
 | `PUT /provider/services` | Provider | `{serviceIds[]}` | 200 |
@@ -632,7 +632,7 @@ frontend/src/
 | `/book/review` | Customer | Review & confirm |
 | `/bookings`, `/bookings/:id` | Customer | My bookings / details |
 | `/profile` | Any logged-in user | Profile (name, time zone) |
-| `/provider/calendar`, `/provider/availability`, `/provider/time-off`, `/provider/services` | Provider | Provider area |
+| `/provider`, `/provider/profile`, `/provider/calendar`, `/provider/availability`, `/provider/time-off`, `/provider/services` | Provider | Provider area (`/provider` lists its pages) |
 | `/admin/*` | Admin | Admin area |
 
 ### 10.3 Key behaviors

@@ -4,10 +4,12 @@ import com.appointmentprep.auth.InviteService;
 import com.appointmentprep.common.DomainException;
 import com.appointmentprep.common.ErrorCode;
 import com.appointmentprep.common.IdGenerator;
+import com.appointmentprep.common.NotFoundException;
 import com.appointmentprep.common.PageResponse;
 import com.appointmentprep.user.User;
 import com.appointmentprep.user.UserRepository;
 import java.time.Clock;
+import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
@@ -77,6 +79,37 @@ public class ProviderService {
   @Transactional(readOnly = true)
   public PageResponse<AdminProviderDto> list(int page, int size) {
     return PageResponse.of(providers.findAllForAdmin(PageRequest.of(page, size)));
+  }
+
+  /**
+   * The calling provider's profile, found by their user id (the JWT subject). A deactivated
+   * provider can still read it (shown read-only); only {@link #updateProfile} requires an active
+   * provider.
+   */
+  @Transactional(readOnly = true)
+  public ProviderProfileDto getProfile(UUID userId) {
+    return ProviderProfileDto.of(
+        providers.findByUserId(userId).orElseThrow(ProviderService::providerNotFound));
+  }
+
+  /**
+   * Only active providers: a deactivated provider may still hold a valid access token for up to 15
+   * minutes (§8.1), but must not change their profile.
+   */
+  @Transactional
+  public ProviderProfileDto updateProfile(UUID userId, UpdateProviderProfileRequest request) {
+    Provider provider =
+        providers
+            .findByUserId(userId)
+            .filter(Provider::isActive)
+            .orElseThrow(ProviderService::providerNotFound);
+    String displayName = request.displayName() == null ? null : request.displayName().strip();
+    provider.updateProfile(displayName, request.bio(), request.timezone(), request.bufferMinutes());
+    return ProviderProfileDto.of(provider);
+  }
+
+  private static NotFoundException providerNotFound() {
+    return new NotFoundException("Provider profile not found.");
   }
 
   private static DomainException emailTaken() {
