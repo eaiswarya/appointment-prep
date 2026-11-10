@@ -13,7 +13,7 @@ public record ServiceDto(
     @Schema(requiredMode = REQUIRED) int durationMinutes,
     @Schema(requiredMode = REQUIRED) boolean active) {
 
-  static ServiceDto of(CatalogItem item) {
+  public static ServiceDto of(CatalogItem item) {
     return new ServiceDto(
         item.getId(),
         item.getName(),

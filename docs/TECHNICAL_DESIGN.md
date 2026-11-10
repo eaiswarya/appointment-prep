@@ -543,7 +543,7 @@ Base path `/api`, set as the servlet context path, so Actuator (`/api/actuator/h
 | `GET /provider/me` · `PATCH /provider/me` | Provider | `{displayName, bio, timezone, bufferMinutes}` (PATCH: any of these; buffer 0–120 in steps of 5) | 200 |
 | `GET /provider/availability` · `PUT` | Provider | `{rules:[{dayOfWeek,startTime,endTime}]}` (full replace) | 200 + `{affectedBookings[]}` (FR-9) |
 | `GET /provider/time-off` · `POST` · `DELETE /{id}` | Provider | `{startAt, endAt, reason?}` | 201 + `{affectedBookings[]}` |
-| `PUT /provider/services` | Provider | `{serviceIds[]}` | 200 |
+| `GET /provider/services` · `PUT` | Provider | PUT: `{serviceIds[]}` (full replace of the active services offered; links to deactivated services are kept) | 200 `{offeredServiceIds[], available: ServiceDto[]}` |
 | `GET /provider/bookings` | Provider | `?from=&to=` | 200 `BookingDto[]` |
 | `GET/POST/PATCH /admin/providers` | Admin | create sends invite | 200/201 |
 | `GET/POST/PATCH /admin/services` | Admin | `{name (≤ 120), description? (≤ 2000), durationMinutes}`; PATCH: any of these + `active` (deactivate, never delete) | 200 page / 201 / 200 |

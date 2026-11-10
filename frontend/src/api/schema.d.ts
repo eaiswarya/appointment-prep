@@ -196,6 +196,22 @@ export interface paths {
         patch: operations["updateProviderProfile"];
         trace?: never;
     };
+    "/provider/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getProviderServices"];
+        put: operations["replaceProviderServices"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/services": {
         parameters: {
             query?: never;
@@ -281,6 +297,12 @@ export interface components {
             /** @description IANA zone; weekly hours are in this zone */
             timezone: string;
         };
+        ProviderServicesDto: {
+            /** @description All active services, by name */
+            available: components["schemas"]["ServiceDto"][];
+            /** @description Active services this provider offers */
+            offeredServiceIds: string[];
+        };
         RefreshResponse: {
             accessToken: string;
         };
@@ -314,6 +336,9 @@ export interface components {
             bufferMinutes?: number;
             displayName?: string;
             timezone?: string;
+        };
+        UpdateProviderServicesRequest: {
+            serviceIds: string[];
         };
         UpdateServiceRequest: {
             active?: boolean;
@@ -700,6 +725,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ProviderProfileDto"];
+                };
+            };
+        };
+    };
+    getProviderServices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProviderServicesDto"];
+                };
+            };
+        };
+    };
+    replaceProviderServices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProviderServicesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProviderServicesDto"];
                 };
             };
         };
