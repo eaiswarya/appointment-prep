@@ -180,6 +180,22 @@ export interface paths {
         patch: operations["updateMe"];
         trace?: never;
     };
+    "/provider/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAvailability"];
+        put: operations["replaceAvailability"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/provider/me": {
         parameters: {
             query?: never;
@@ -245,6 +261,26 @@ export interface components {
             id: string;
             invitePending: boolean;
             timezone: string;
+        };
+        AvailabilityDto: {
+            /** @description By day, then start time */
+            rules: components["schemas"]["AvailabilityRuleDto"][];
+            /** @description The provider's IANA zone; rule times are in it */
+            timezone: string;
+        };
+        AvailabilityRuleDto: {
+            /**
+             * Format: int32
+             * @description ISO day of week, 1 = Monday … 7 = Sunday
+             */
+            dayOfWeek: number;
+            /**
+             * @description Exclusive; on the same day as the start
+             * @example 17:00
+             */
+            endTime: string;
+            /** @example 09:00 */
+            startTime: string;
         };
         CreateServiceRequest: {
             description?: string;
@@ -325,6 +361,9 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+        };
+        UpdateAvailabilityRequest: {
+            rules: components["schemas"]["AvailabilityRuleDto"][];
         };
         UpdateProfileRequest: {
             fullName?: string;
@@ -681,6 +720,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UserDto"];
+                };
+            };
+        };
+    };
+    getAvailability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AvailabilityDto"];
+                };
+            };
+        };
+    };
+    replaceAvailability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAvailabilityRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AvailabilityDto"];
                 };
             };
         };

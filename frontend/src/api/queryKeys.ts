@@ -10,6 +10,8 @@ export const queryKeys = {
   },
   /** The calling provider's profile, GET /provider/me. */
   providerProfile: ['provider', 'me'] as const,
+  /** The calling provider's weekly hours, GET /provider/availability. */
+  providerAvailability: ['provider', 'availability'] as const,
   /** The services the calling provider offers, GET /provider/services. */
   providerServices: ['provider', 'services'] as const,
   /** The public catalog, GET /services. */

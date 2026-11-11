@@ -4,6 +4,7 @@ import { AppLayout } from './components/AppLayout'
 import { AdminHomePage } from './features/admin/AdminHomePage'
 import { AdminProvidersPage } from './features/admin/AdminProvidersPage'
 import { AdminServicesPage } from './features/admin/AdminServicesPage'
+import { ProviderAvailabilityPage } from './features/provider/ProviderAvailabilityPage'
 import { ProviderHomePage } from './features/provider/ProviderHomePage'
 import { ProviderProfilePage } from './features/provider/ProviderProfilePage'
 import { ProviderServicesPage } from './features/provider/ProviderServicesPage'
@@ -62,6 +63,14 @@ export const routes: RouteObject[] = [
         element: (
           <RequireRole role="PROVIDER">
             <ProviderProfilePage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: '/provider/availability',
+        element: (
+          <RequireRole role="PROVIDER">
+            <ProviderAvailabilityPage />
           </RequireRole>
         ),
       },
