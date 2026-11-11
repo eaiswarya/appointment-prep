@@ -51,6 +51,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   ResponseEntity<Object> handleDomain(DomainException ex, WebRequest request) {
     ProblemDetail body = ProblemDetail.forStatusAndDetail(ex.code().status(), ex.getMessage());
     withCode(body, ex.code());
+    if (ex instanceof FieldValidationException invalid) {
+      body.setProperty("errors", invalid.errors());
+    }
     HttpHeaders headers = new HttpHeaders();
     if (ex instanceof RateLimitedException limited) {
       headers.set(HttpHeaders.RETRY_AFTER, Long.toString(limited.retryAfterSeconds()));

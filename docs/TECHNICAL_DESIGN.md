@@ -82,8 +82,8 @@ backend/src/main/java/com/appointmentprep/
 ├── config/          # security, JWT, OpenAPI, scheduling, CORS
 ├── auth/            # register, login, refresh, password reset, invites
 ├── user/            # User entity, profile endpoints
-├── provider/        # Provider profile, availability rules, time off
-├── catalog/         # ServiceOffering (the "Service" concept) + provider_services
+├── provider/        # Provider profile, services offered (provider_services), availability rules, time off
+├── catalog/         # CatalogItem (the "Service" concept): the service catalog
 ├── slot/            # SlotService — computes free slots (no persistence)
 ├── booking/         # Booking aggregate, conflict checks, state machine, events
 ├── notification/    # Outbox, dispatcher, templates, ICS builder, reminder job
@@ -92,7 +92,7 @@ backend/src/main/java/com/appointmentprep/
 ```
 
 Conventions:
-- **Naming.** The product term "Service" is `ServiceOffering` in code, so it doesn't clash with Spring's `@Service`. The table name is still `services`.
+- **Naming.** The product term "Service" is `CatalogItem` in code (API: `ServiceDto`), so it doesn't clash with Spring's `@Service`. The table name is still `services`.
 - **Time.** Code reads the current time from an injected `java.time.Clock`. Never call `Instant.now()` directly, so tests can freeze time.
 - **DTOs.** Controllers accept and return Java `record` DTOs, never entities. Bean Validation (`@Valid`) runs on every request body.
 - **Transactions.** Service methods own transaction boundaries (`@Transactional`). Controllers stay thin.
@@ -543,7 +543,7 @@ Base path `/api`, set as the servlet context path, so Actuator (`/api/actuator/h
 | `GET /provider/me` · `PATCH /provider/me` | Provider | `{displayName, bio, timezone, bufferMinutes}` (PATCH: any of these; buffer 0–120 in steps of 5) | 200 |
 | `GET /provider/availability` · `PUT` | Provider | `{rules:[{dayOfWeek,startTime,endTime}]}` (full replace) | 200 + `{affectedBookings[]}` (FR-9) |
 | `GET /provider/time-off` · `POST` · `DELETE /{id}` | Provider | `{startAt, endAt, reason?}` | 201 + `{affectedBookings[]}` |
-| `PUT /provider/services` | Provider | `{serviceIds[]}` | 200 |
+| `GET /provider/services` · `PUT` | Provider | PUT: `{serviceIds[]}` (full replace of the active services offered; links to deactivated services are kept) | 200 `{offeredServiceIds[], available: ServiceDto[]}` |
 | `GET /provider/bookings` | Provider | `?from=&to=` | 200 `BookingDto[]` |
 | `GET/POST/PATCH /admin/providers` | Admin | create sends invite | 200/201 |
 | `GET/POST/PATCH /admin/services` | Admin | `{name (≤ 120), description? (≤ 2000), durationMinutes}`; PATCH: any of these + `active` (deactivate, never delete) | 200 page / 201 / 200 |
