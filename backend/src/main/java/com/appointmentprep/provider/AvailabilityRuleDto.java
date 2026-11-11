@@ -3,6 +3,7 @@ package com.appointmentprep.provider;
 import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.OptBoolean;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -22,18 +23,18 @@ public record AvailabilityRuleDto(
     @Schema(
             requiredMode = REQUIRED,
             type = "string",
-            pattern = "^\\d{2}:\\d{2}$",
+            pattern = "^([01]\\d|2[0-3]):[0-5]\\d$",
             example = "09:00")
-        @JsonFormat(pattern = "HH:mm")
+        @JsonFormat(pattern = "HH:mm", lenient = OptBoolean.FALSE)
         @NotNull
         LocalTime startTime,
     @Schema(
             requiredMode = REQUIRED,
             type = "string",
-            pattern = "^\\d{2}:\\d{2}$",
+            pattern = "^([01]\\d|2[0-3]):[0-5]\\d$",
             example = "17:00",
             description = "Exclusive; on the same day as the start")
-        @JsonFormat(pattern = "HH:mm")
+        @JsonFormat(pattern = "HH:mm", lenient = OptBoolean.FALSE)
         @NotNull
         LocalTime endTime) {
 

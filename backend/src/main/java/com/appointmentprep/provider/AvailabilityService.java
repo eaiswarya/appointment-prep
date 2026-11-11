@@ -7,7 +7,6 @@ import com.appointmentprep.common.NotFoundException;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -100,33 +99,26 @@ public class AvailabilityService {
   }
 
   /**
-   * Same-day ranges must not overlap; touching is fine because the end is exclusive. The later
-   * range in the request is the one reported.
+   * Same-day ranges must not overlap; touching is fine because the end is exclusive. Every
+   * overlapping pair is reported, on the later range in the request, so one response lists all of
+   * them. Quadratic, which is fine for at most 100 rules.
    */
   private static List<FieldProblem> overlaps(
       List<AvailabilityRuleDto> requested, List<Integer> indexes) {
     List<FieldProblem> problems = new ArrayList<>();
-    List<Integer> sorted = new ArrayList<>(indexes);
-    sorted.sort(
-        Comparator.<Integer>comparingInt(i -> requested.get(i).dayOfWeek())
-            .thenComparing(i -> requested.get(i).startTime()));
-    Integer reach = null; // the range on the current day that ends latest so far
-    for (int i : sorted) {
-      AvailabilityRuleDto rule = requested.get(i);
-      if (reach != null && requested.get(reach).dayOfWeek().equals(rule.dayOfWeek())) {
-        AvailabilityRuleDto earlier = requested.get(reach);
-        if (rule.startTime().isBefore(earlier.endTime())) {
-          AvailabilityRuleDto other = i > reach ? earlier : rule;
+    for (int a = 0; a < indexes.size(); a++) {
+      AvailabilityRuleDto first = requested.get(indexes.get(a));
+      for (int b = a + 1; b < indexes.size(); b++) {
+        AvailabilityRuleDto later = requested.get(indexes.get(b));
+        if (first.dayOfWeek().equals(later.dayOfWeek())
+            && first.startTime().isBefore(later.endTime())
+            && later.startTime().isBefore(first.endTime())) {
           problems.add(
               new FieldProblem(
-                  "rules[" + Math.max(i, reach) + "]",
-                  "overlaps " + other.startTime() + "–" + other.endTime() + " on the same day"));
-          if (!rule.endTime().isAfter(earlier.endTime())) {
-            continue; // the earlier range still reaches further
-          }
+                  "rules[" + indexes.get(b) + "]",
+                  "overlaps " + first.startTime() + "–" + first.endTime() + " on the same day"));
         }
       }
-      reach = i;
     }
     return problems;
   }

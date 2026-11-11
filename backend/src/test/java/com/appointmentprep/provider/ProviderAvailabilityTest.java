@@ -2,6 +2,7 @@ package com.appointmentprep.provider;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -124,6 +125,35 @@ class ProviderAvailabilityTest {
     replace(me, List.of(rule(4, "09:00", "17:00"), rule(4, "10:00", "11:00")))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.errors[*].field").value(hasItem("rules[1]")));
+  }
+
+  @Test
+  void theLaterRangeInTheRequestIsReportedEvenWhenItStartsEarlier() throws Exception {
+    replace(me, List.of(rule(1, "10:00", "12:00"), rule(1, "09:00", "11:00")))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errors[*].field").value(contains("rules[1]")));
+  }
+
+  @Test
+  void everyOverlappingPairIsReportedAtOnce() throws Exception {
+    // rules[0] and rules[1] overlap each other (11:00-12:00), and rules[2] overlaps both.
+    replace(
+            me,
+            List.of(
+                rule(2, "09:30", "12:00"), rule(2, "11:00", "13:00"), rule(2, "09:00", "17:00")))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errors.length()").value(3))
+        .andExpect(
+            jsonPath("$.errors[*].field")
+                .value(containsInAnyOrder("rules[1]", "rules[2]", "rules[2]")));
+  }
+
+  @Test
+  void midnightIsNotATimeOfDayHere() throws Exception {
+    // "24:00" would otherwise be read as 00:00 (start) or fail with a misleading message (end).
+    expectFieldError(rule(1, "24:00", "02:00"), "rules[0].startTime");
+    expectFieldError(rule(1, "18:00", "24:00"), "rules[0].endTime");
+    assertThat(ruleCount(me)).isZero();
   }
 
   @Test

@@ -31,6 +31,14 @@ function savesTo(sink: { body?: unknown }) {
   })
 }
 
+/** Presses Tab until `target` has focus, so the test proves it can be reached in tab order. */
+async function tabTo(user: ReturnType<typeof userEvent.setup>, target: HTMLElement) {
+  for (let i = 0; i < 60 && document.activeElement !== target; i++) {
+    await user.tab()
+  }
+  expect(target).toHaveFocus()
+}
+
 async function day(name: string) {
   return screen.findByRole('group', { name })
 }
@@ -140,6 +148,29 @@ describe('ProviderAvailabilityPage', () => {
     expect(within(wednesday).getByLabelText('From')).not.toHaveAttribute('aria-invalid')
   })
 
+  it('shows every message the server gave for one range', async () => {
+    server.use(
+      ...sessionExists(provider),
+      availabilityIs(() => weekdays),
+      http.put('*/api/provider/availability', () =>
+        problem(400, {
+          code: 'VALIDATION_ERROR',
+          errors: [
+            { field: 'rules[2]', message: 'overlaps 09:00–12:00 on the same day' },
+            { field: 'rules[2]', message: 'overlaps 13:00–17:00 on the same day' },
+          ],
+        }),
+      ),
+    )
+    renderRoute('/provider/availability')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+
+    const from = within(await day('Wednesday')).getByLabelText('From')
+    await waitFor(() => expect(from).toHaveAccessibleDescription(/09:00–12:00.*13:00–17:00/))
+  })
+
   it('asks for both times before sending anything', async () => {
     let sent = false
     server.use(
@@ -173,13 +204,16 @@ describe('ProviderAvailabilityPage', () => {
     const user = userEvent.setup()
 
     const add = within(await day('Monday')).getByRole('button', { name: 'Add hours on Monday' })
-    add.focus()
+    await tabTo(user, add)
     await user.keyboard('{Enter}')
     expect(within(await day('Monday')).getByLabelText('From')).toHaveFocus()
-    screen.getByRole('button', { name: 'Save' }).focus()
+    await tabTo(user, screen.getByRole('button', { name: 'Save' }))
     await user.keyboard('{Enter}')
 
-    expect(await screen.findByRole('status')).toHaveTextContent(/saved/i)
+    const status = await screen.findByRole('status')
+    expect(status).toHaveTextContent(/saved/i)
+    // The form is rebuilt from the saved week, so focus goes to the confirmation, not the page body.
+    await waitFor(() => expect(status).toHaveFocus())
     expect(sink.body).toEqual({ rules: [{ dayOfWeek: 1, startTime: '09:00', endTime: '17:00' }] })
   })
 

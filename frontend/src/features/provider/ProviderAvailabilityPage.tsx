@@ -30,6 +30,14 @@ export function ProviderAvailabilityPage() {
   // Kept here, not in the editor: the editor is re-created when the saved rules change.
   const [notice, setNotice] = useState('')
   const [problem, setProblem] = useState('')
+  const status = useRef<HTMLParagraphElement>(null)
+
+  // A save rebuilds the editor (and its Save button), so take focus to the confirmation instead.
+  useEffect(() => {
+    if (notice) {
+      status.current?.focus()
+    }
+  }, [notice])
 
   const availability = useQuery({
     queryKey: queryKeys.providerAvailability,
@@ -61,7 +69,9 @@ export function ProviderAvailabilityPage() {
       )}
       {/* Always in the DOM, so screen readers announce the text when it appears. */}
       <p
+        ref={status}
         role="status"
+        tabIndex={-1}
         className={notice ? 'mt-6 rounded border border-green-300 bg-green-50 p-3 text-sm text-green-900' : 'sr-only'}
       >
         {notice}
@@ -148,7 +158,8 @@ function Editor({ availability, onChange, onSaved, onProblem }: EditorProps) {
       }
       const text = message.charAt(0).toUpperCase() + message.slice(1)
       const part = match?.[2] === 'startTime' || match?.[2] === 'endTime' ? match[2] : 'range'
-      mapped[row.key] = { ...mapped[row.key], [part]: text }
+      const earlier = mapped[row.key]?.[part]
+      mapped[row.key] = { ...mapped[row.key], [part]: earlier ? `${earlier}; ${text}` : text }
     }
     setErrors(mapped)
     if (unmapped || Object.keys(mapped).length === 0) {
