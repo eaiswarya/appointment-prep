@@ -12,8 +12,13 @@ public class FieldValidationException extends DomainException {
   private final List<FieldProblem> errors;
 
   public FieldValidationException(String field, String message) {
+    this(List.of(new FieldProblem(field, message)));
+  }
+
+  /** Several problems at once, so a client can show them all in one go. */
+  public FieldValidationException(List<FieldProblem> errors) {
     super(ErrorCode.VALIDATION_ERROR, "Some fields are invalid.");
-    this.errors = List.of(new FieldProblem(field, message));
+    this.errors = List.copyOf(errors);
   }
 
   public List<FieldProblem> errors() {

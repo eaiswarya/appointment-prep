@@ -541,7 +541,7 @@ Base path `/api`, set as the servlet context path, so Actuator (`/api/actuator/h
 | `POST /bookings/{id}/reschedule` | Customer (owner) | `{startAt}` | 201 new `BookingDto` |
 | `PATCH /bookings/{id}/status` | Provider | `{status: COMPLETED\|NO_SHOW}` | 200 |
 | `GET /provider/me` · `PATCH /provider/me` | Provider | `{displayName, bio, timezone, bufferMinutes}` (PATCH: any of these; buffer 0–120 in steps of 5) | 200 |
-| `GET /provider/availability` · `PUT` | Provider | `{rules:[{dayOfWeek,startTime,endTime}]}` (full replace) | 200 + `{affectedBookings[]}` (FR-9) |
+| `GET /provider/availability` · `PUT` | Provider | `{rules:[{dayOfWeek,startTime,endTime}]}` (full replace; times `HH:mm`, local to the provider's zone) | 200 `{timezone, rules[]}` (sorted by day, then start); `affectedBookings[]` (FR-9) is added in M4 |
 | `GET /provider/time-off` · `POST` · `DELETE /{id}` | Provider | `{startAt, endAt, reason?}` | 201 + `{affectedBookings[]}` |
 | `GET /provider/services` · `PUT` | Provider | PUT: `{serviceIds[]}` (full replace of the active services offered; links to deactivated services are kept) | 200 `{offeredServiceIds[], available: ServiceDto[]}` |
 | `GET /provider/bookings` | Provider | `?from=&to=` | 200 `BookingDto[]` |
@@ -551,7 +551,12 @@ Base path `/api`, set as the servlet context path, so Actuator (`/api/actuator/h
 | `GET/PUT /admin/settings` | Admin | `{key: value}` map | 200 |
 | `GET /admin/emails/failed` · `POST /{id}/retry` | Admin | — | 200 / 202 |
 
-**Availability validation** (`PUT /provider/availability`): rules on the same day must not overlap, and times are on 5-minute boundaries. The response lists confirmed future bookings that now fall outside availability. The UI shows these as a warning (FR-9).
+**Availability validation** (`PUT /provider/availability`):
+- `dayOfWeek` is ISO, 1 = Monday. Times are `HH:mm` on 5-minute boundaries, local to the provider's zone, and stored as given (never converted to UTC; §6.1).
+- `startTime` is before `endTime` on the same day: overnight ranges aren't supported in v1, so the latest end is 23:55.
+- Ranges on the same day must not overlap. They may touch, because the end is exclusive. The later range in the request is reported, as `rules[i]`.
+- The whole set is checked first. Every problem comes back in one `VALIDATION_ERROR`, and nothing is saved.
+- From M4, the response also lists confirmed future bookings that now fall outside availability, and the UI shows these as a warning (FR-9).
 
 ### 9.2 Example `BookingDto`
 
