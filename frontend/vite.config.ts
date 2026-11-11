@@ -14,5 +14,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // Form tests type character by character and take up to ~3.6 s; the 5 s default timed out
+    // under ordinary load (other files running in parallel).
+    testTimeout: 15_000,
   },
 })
